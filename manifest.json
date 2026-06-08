@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Clautics",
+  "version": "1.0.16",
+  "description": "Real-time Claude usage dashboard \u2014 session limits, weekly caps, and message tracking.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "webRequest",
+    "tabs",
+    "cookies"
+  ],
+  "host_permissions": [
+    "*://claude.ai/*",
+    "*://api.lemonsqueezy.com/*"
+  ],
+  "background": {
+    "service_worker": "src/worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "src/page.js"
+      ],
+      "css": [
+        "src/panel.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Clautics",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/panel.css"
+      ],
+      "matches": [
+        "https://claude.ai/*"
+      ]
+    }
+  ]
+}
