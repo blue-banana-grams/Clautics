@@ -19,10 +19,17 @@ const CLR_CAUTION = '#d4974a';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
+// Returns [solidColor, gradientStart] for a given pct
 function pctColor(pct) {
   if (pct >= 95) return CLR_WARN;
   if (pct >= 80) return CLR_CAUTION;
   return CLR_ACCENT;
+}
+
+function pctGradient(pct) {
+  if (pct >= 95) return `linear-gradient(to right, #f07a70, ${CLR_WARN})`;
+  if (pct >= 80) return `linear-gradient(to right, #e8b870, ${CLR_CAUTION})`;
+  return `linear-gradient(to right, #e09878, ${CLR_ACCENT})`;
 }
 
 function fmtCountdown(ts) {
@@ -219,9 +226,21 @@ function renderLimits(limits) {
     const pct = limit.pct ?? 0, color = pctColor(pct);
     const row   = document.createElement('div'); row.className = 'lrow';
     const top   = document.createElement('div'); top.className = 'lrow-top';
-    const label = document.createElement('span'); label.className = 'lrow-label'; label.textContent = LABEL[key] || key;
+
+    // Colored dot indicator
+    const dot = document.createElement('span');
+    dot.style.cssText = `display:inline-block;width:6px;height:6px;border-radius:50%;background-color:${color};margin-right:6px;flex-shrink:0;`;
+
+    const label = document.createElement('span'); label.className = 'lrow-label';
+    label.style.display = 'flex'; label.style.alignItems = 'center';
+    label.appendChild(dot);
+    label.appendChild(document.createTextNode(LABEL[key] || key));
+
     const right = document.createElement('div'); right.className = 'lrow-right';
-    const pctEl = document.createElement('span'); pctEl.className = 'lrow-pct'; pctEl.style.color = color; pctEl.textContent = `${pct.toFixed(0)}%`;
+    const pctEl = document.createElement('span'); pctEl.className = 'lrow-pct';
+    pctEl.style.color = color;
+    pctEl.textContent = `${pct.toFixed(0)}%`;
+
     const resetEl = document.createElement('span'); resetEl.className = 'lrow-reset';
     if (key === 'extraUsage' && limit.usedCents != null) {
       resetEl.textContent = `$${(limit.usedCents/100).toFixed(2)} / $${(limit.limitCents/100).toFixed(2)}`;
@@ -229,13 +248,21 @@ function renderLimits(limits) {
       resetEl.dataset.ts  = limit.resetsAt;
       resetEl.textContent = `↺ ${fmtCountdown(limit.resetsAt)}`;
     }
-    right.appendChild(pctEl); right.appendChild(resetEl);
+
+    right.appendChild(pctEl);
     top.appendChild(label); top.appendChild(right);
+
     const track = document.createElement('div'); track.className = 'track';
     const fill  = document.createElement('div'); fill.className = 'fill';
-    fill.style.width = `${Math.min(pct, 100)}%`; fill.style.background = color;
+    // Use explicit backgroundColor so there's no CSS specificity conflict,
+    // then overlay a gradient for the "color-coded" visual the website promises.
+    fill.style.backgroundColor = color;
+    fill.style.backgroundImage = pct > 5 ? pctGradient(pct) : 'none';
+    fill.style.width = `${Math.min(pct, 100)}%`;
     track.appendChild(fill);
+
     row.appendChild(top); row.appendChild(track);
+    if (resetEl.textContent) row.appendChild(resetEl);
     container.appendChild(row);
   }
 }
