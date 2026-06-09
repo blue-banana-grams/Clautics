@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" style="background-color:#1a1a1a;">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clautics</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root, [data-theme="dark"] {
+      --bg:      #1a1a1a;
+      --surface: #232323;
+      --bg3:     #2c2c2c;
+      --border:  #3a3a3a;
+      --text:    #ececec;
+      --text3:   #aaaaaa;
+      --text4:   #777777;
+      --text5:   #505050;
+      --accent:  #cc785c;
+      --warn:    #e5534b;
+      --caution: #d4974a;
+    }
+    [data-theme="light"] {
+      --bg:      #f9f9f8;
+      --surface: #ffffff;
+      --bg3:     #efefed;
+      --border:  #ddddd8;
+      --text:    #1a1a1a;
+      --text3:   #555550;
+      --text4:   #888882;
+      --text5:   #aaaaaa;
+      --accent:  #cc785c;
+      --warn:    #d93025;
+      --caution: #b5770d;
+    }
+
+    html { width: 290px; display: block; background: #1a1a1a; }
+    [data-theme="light"] html, html[data-theme="light"] { background: #f9f9f8; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      border: 1px solid rgba(204,120,92,0.35);
+      min-height: 100px;
+    }
+
+    /* ── Header ── */
+    .hd {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 12px 9px;
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .hd-logo { color: var(--accent); font-size: 14px; }
+    .hd-name { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; flex: 1; }
+    .hd-pro-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+      background-color: var(--accent); color: #fff;
+      border-radius: 4px; padding: 2px 6px; display: none;
+    }
+    .hd-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text4);
+      width: 24px; height: 24px; cursor: pointer;
+      font-size: 12px; display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background-color 0.15s; flex-shrink: 0;
+    }
+    .hd-btn:hover { background-color: var(--bg3); color: var(--text); }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Shared section label ── */
+    .section-lbl {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text5); margin-bottom: 7px;
+    }
+
+    /* ── Main body ── */
+    .body { padding: 11px 13px 10px; background-color: var(--bg); }
+
+    .tier-row {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 10px;
+    }
+    .tier-badge {
+      font-size: 10px; font-weight: 500;
+      background-color: var(--bg3); color: var(--text3);
+      border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 7px; letter-spacing: 0.03em;
+    }
+    .fetched-at { font-size: 10px; color: var(--text5); }
+
+    /* ── Limits ── */
+    .limits { display: flex; flex-direction: column; gap: 9px; margin-bottom: 13px; }
+    .lrow   { display: flex; flex-direction: column; gap: 4px; }
+    .lrow-top   { display: flex; align-items: center; justify-content: space-between; }
+    .lrow-label { font-size: 11px; color: var(--text4); }
+    .lrow-right { display: flex; align-items: center; gap: 8px; }
+    .lrow-pct   { font-size: 12px; font-weight: 600; }
+    .lrow-reset { font-size: 10px; color: var(--text5); }
+    .track { height: 4px; border-radius: 2px; background-color: var(--bg3); overflow: hidden; }
+    .fill  { height: 100%; border-radius: 2px; background-color: var(--accent); transition: width 0.4s ease; }
+    .empty { font-size: 11px; color: var(--text5); padding: 6px 0; text-align: center; line-height: 1.6; }
+
+    /* ── Peak banner ── */
+    #peak-banner {
+      display: none; align-items: center; gap: 6px;
+      background-color: rgba(212,151,74,0.1);
+      border: 1px solid rgba(212,151,74,0.28);
+      border-radius: 7px; padding: 5px 9px;
+      font-size: 11px; color: var(--caution);
+      margin-bottom: 11px; line-height: 1.4;
+    }
+    #peak-banner.visible { display: flex; }
+
+    /* ── Daily stats pills ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 5px; margin-bottom: 11px;
+    }
+    .stat-pill {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px; padding: 6px 6px 5px;
+      text-align: center;
+    }
+    .stat-pill-val {
+      font-size: 14px; font-weight: 700;
+      color: var(--text); line-height: 1.1; display: block; margin-bottom: 2px;
+    }
+    .stat-pill-lbl {
+      font-size: 9px; font-weight: 500; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text5);
+    }
+    .stat-pill-val .fire { color: var(--accent); }
+
+    /* ── 7-day bar chart ── */
+    #seven-day-section { margin-bottom: 13px; }
+    .chart-wrap {
+      display: flex; align-items: flex-end;
+      gap: 4px; height: 52px;
+    }
+    .chart-col {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 0;
+    }
+    .chart-bar-wrap {
+      flex: 1; width: 100%; display: flex;
+      align-items: flex-end; justify-content: center;
+      margin-bottom: 4px;
+    }
+    .chart-bar {
+      width: 100%; border-radius: 3px 3px 0 0;
+      background-color: var(--accent);
+      min-height: 2px;
+      transition: height 0.3s ease;
+    }
+    .chart-bar.today { background-color: var(--accent); opacity: 1; }
+    .chart-bar.past  { background-color: var(--bg3); opacity: 1; }
+    .chart-bar.past-active { background-color: var(--accent); opacity: 0.28; }
+    .chart-bar.empty { background-color: var(--bg3); opacity: 1; }
+    .chart-day-lbl {
+      font-size: 9px; font-weight: 500; color: var(--text4);
+      white-space: nowrap; line-height: 1; margin-bottom: 2px;
+    }
+    .chart-count-lbl {
+      font-size: 10px; font-weight: 600; color: var(--text3);
+      white-space: nowrap; line-height: 1;
+    }
+    .chart-count-lbl.zero { color: var(--text5); }
+
+    /* ── Year heatmap ── */
+    #year-section { margin-bottom: 11px; }
+    .hm-stats {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 3px 10px; margin-top: 7px;
+    }
+    .hm-stat { font-size: 10px; color: var(--text4); }
+    .hm-stat strong { font-size: 11px; font-weight: 600; color: var(--text); }
+
+    /* ── Monthly/weekly breakdown (Pro) ── */
+    #breakdown-section { margin-bottom: 11px; }
+    .breakdown-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+    .breakdown-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 9px;
+    }
+    .breakdown-val {
+      font-size: 18px; font-weight: 700;
+      color: var(--text); line-height: 1; margin-bottom: 3px;
+    }
+    .breakdown-lbl {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text5); display: block;
+    }
+    .breakdown-delta {
+      font-size: 10px; color: var(--text5); margin-top: 2px;
+    }
+    .breakdown-delta.up   { color: var(--accent); }
+    .breakdown-delta.down { color: var(--text5); }
+
+    /* ── Export (Pro) ── */
+    #export-section { margin-bottom: 11px; }
+    .export-btns { display: flex; gap: 6px; }
+    .export-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+      background-color: var(--bg3); border: 1px solid var(--border);
+      border-radius: 7px; padding: 7px 8px;
+      font-size: 11px; font-weight: 600; color: var(--text3);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .export-btn:hover { background-color: var(--accent); color: #fff; border-color: var(--accent); }
+    .export-btn-icon { font-size: 12px; }
+
+    /* ── Upgrade banner (free) ── */
+    #upgrade-banner {
+      display: none; align-items: center; gap: 8px;
+      background-color: rgba(204,120,92,0.07);
+      border: 1px solid rgba(204,120,92,0.28);
+      border-radius: 8px; padding: 8px 10px;
+      margin-top: 4px; cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    #upgrade-banner:hover { background-color: rgba(204,120,92,0.13); }
+    #upgrade-banner.show { display: flex; }
+    .upgrade-icon { font-size: 15px; flex-shrink: 0; }
+    .upgrade-text { flex: 1; }
+    .upgrade-text strong { display: block; font-size: 11px; color: var(--accent); margin-bottom: 1px; }
+    .upgrade-text span   { font-size: 10px; color: var(--text4); line-height: 1.4; }
+    .upgrade-arrow { font-size: 14px; color: var(--accent); flex-shrink: 0; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background-color: var(--border); margin: 10px 0; }
+
+    /* ── Settings view ── */
+    .settings-body { padding: 13px; background-color: var(--bg); }
+    .settings-section { margin-bottom: 18px; }
+    .settings-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text5); margin-bottom: 8px;
+    }
+
+    .pro-status {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .pro-status-row { display: flex; align-items: center; gap: 8px; }
+    .pro-status-icon { font-size: 18px; }
+    .pro-status-text strong { display: block; font-size: 12px; color: var(--text); margin-bottom: 1px; }
+    .pro-status-text span   { font-size: 10px; color: var(--text4); }
+
+    .license-input-wrap { display: flex; gap: 6px; margin-top: 6px; }
+    .license-input {
+      flex: 1; background-color: var(--bg3);
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 11px;
+      padding: 6px 8px; outline: none;
+      font-family: ui-monospace, monospace;
+      transition: border-color 0.15s;
+    }
+    .license-input:focus { border-color: var(--accent); }
+    .license-input::placeholder { color: var(--text5); }
+    .license-input.error  { border-color: var(--warn); }
+    .license-input.valid  { border-color: #4caf50; }
+
+    .activate-btn {
+      background-color: var(--accent); color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 11px; font-weight: 600;
+      padding: 6px 12px; cursor: pointer;
+      white-space: nowrap; transition: opacity 0.15s;
+    }
+    .activate-btn:hover   { opacity: 0.85; }
+    .activate-btn:disabled{ opacity: 0.4; cursor: default; }
+
+    .license-msg { font-size: 10px; margin-top: 5px; line-height: 1.4; display: none; }
+    .license-msg.show    { display: block; }
+    .license-msg.success { color: #4caf50; }
+    .license-msg.fail    { color: var(--warn); }
+
+    .deactivate-btn {
+      margin-top: 8px; background: none;
+      border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text5); font-size: 10px;
+      padding: 3px 8px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .deactivate-btn:hover { color: var(--warn); border-color: var(--warn); }
+
+    /* ── Custom alert thresholds (Pro) ── */
+    #custom-alerts-section { display: none; }
+    .threshold-row {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 8px; margin-bottom: 7px;
+    }
+    .threshold-label { font-size: 11px; color: var(--text3); }
+    .threshold-input {
+      width: 52px; background-color: var(--bg3);
+      border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text); font-size: 11px; text-align: center;
+      padding: 4px 6px; outline: none; transition: border-color 0.15s;
+    }
+    .threshold-input:focus { border-color: var(--accent); }
+    .threshold-unit { font-size: 10px; color: var(--text5); margin-left: -4px; }
+    .save-thresholds-btn {
+      width: 100%; margin-top: 4px; background-color: var(--bg3);
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text4); font-size: 11px; font-weight: 600;
+      padding: 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .save-thresholds-btn:hover { background-color: var(--accent); color: #fff; border-color: var(--accent); }
+    .save-thresholds-btn.saved { color: #4caf50; border-color: #4caf50; }
+
+    /* ── Buy button ── */
+    .buy-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; background-color: var(--accent); color: #fff;
+      border: none; border-radius: 8px; padding: 9px 14px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: opacity 0.15s;
+    }
+    .buy-btn:hover { opacity: 0.85; }
+
+    .pro-features { display: flex; flex-direction: column; gap: 5px; }
+    .pro-feature  { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text4); }
+    .pro-feature-icon { color: var(--accent); font-size: 11px; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 7px 13px 9px;
+      background-color: var(--bg);
+      font-size: 10px; color: var(--text5); text-align: center;
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="hd">
+  <span class="hd-logo">◈</span>
+  <span class="hd-name">Clautics</span>
+  <span class="hd-pro-badge" id="proBadge">PRO</span>
+  <button class="hd-btn" id="themeBtn"   title="Toggle light/dark">☀️</button>
+  <button class="hd-btn" id="settingsBtn" title="Settings">⚙</button>
+  <button class="hd-btn" id="refreshBtn" title="Refresh" style="display:none">↻</button>
+</div>
+
+<!-- ── Main view ── -->
+<div class="view active" id="view-main">
+  <div class="body">
+
+    <div class="tier-row">
+      <span class="tier-badge" id="tierBadge" style="display:none"></span>
+      <span class="fetched-at" id="fetchedAt"></span>
+    </div>
+
+    <!-- Peak banner -->
+    <div id="peak-banner">
+      <span id="peak-icon">⚠️</span>
+      <span id="peak-text"></span>
+    </div>
+
+    <!-- Limits -->
+    <div class="section-lbl">Usage Limits</div>
+    <div class="limits" id="limits">
+      <div class="empty">Loading…</div>
+    </div>
+
+    <!-- Daily stats pills -->
+    <div class="section-lbl" style="margin-top:2px;">Daily Activity</div>
+    <div class="stats-row" id="stats-row">
+      <div class="stat-pill">
+        <span class="stat-pill-val" id="stat-today">—</span>
+        <span class="stat-pill-lbl">Today</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-val" id="stat-streak">—</span>
+        <span class="stat-pill-lbl">Streak</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-val" id="stat-avg">—</span>
+        <span class="stat-pill-lbl">Avg / day</span>
+      </div>
+    </div>
+
+    <!-- 7-day bar chart (free + pro) -->
+    <div id="seven-day-section">
+      <div class="section-lbl" style="margin-bottom:8px;">Usage This Week</div>
+      <div class="chart-wrap" id="seven-day-chart"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Year heatmap — Pro only (hidden for free users) -->
+    <div id="year-section" style="display:none">
+      <div class="section-lbl">Activity — Past Year</div>
+      <div id="daily-usage"></div>
+    </div>
+
+    <!-- Monthly & weekly breakdown — Pro only -->
+    <div id="breakdown-section" style="display:none">
+      <div class="divider"></div>
+      <div class="section-lbl">Breakdown</div>
+      <div class="breakdown-grid" id="breakdown-grid"></div>
+    </div>
+
+    <!-- Export — Pro only -->
+    <div id="export-section" style="display:none">
+      <div class="divider"></div>
+      <div class="section-lbl">Export Data</div>
+      <div class="export-btns">
+        <button class="export-btn" id="exportCsvBtn">
+          <span class="export-btn-icon">↓</span> CSV
+        </button>
+        <button class="export-btn" id="exportJsonBtn">
+          <span class="export-btn-icon">↓</span> JSON
+        </button>
+      </div>
+    </div>
+
+    <!-- Upgrade banner — free users -->
+    <div id="upgrade-banner">
+      <span class="upgrade-icon">◈</span>
+      <div class="upgrade-text">
+        <strong>Unlock Clautics Pro</strong>
+        <span>Full year history, export &amp; more — $3.99 once</span>
+      </div>
+      <span class="upgrade-arrow">→</span>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Stats live inside claude.ai — open it to start tracking.<br>
+    <a href="https://claude.ai" target="_blank">Open Claude →</a>
+  </div>
+</div>
+
+<!-- ── Settings view ── -->
+<div class="view" id="view-settings">
+  <div class="settings-body">
+
+    <!-- License -->
+    <div class="settings-section">
+      <div class="settings-title">License</div>
+      <div class="pro-status" id="pro-status-card">
+        <div class="pro-status-row">
+          <span class="pro-status-icon" id="pro-status-icon">🔓</span>
+          <div class="pro-status-text">
+            <strong id="pro-status-label">Free plan</strong>
+            <span id="pro-status-sub">7-day history · basic stats</span>
+          </div>
+        </div>
+
+        <div id="license-activate-section" style="margin-top:10px;">
+          <div style="font-size:10px;color:var(--text5);margin-bottom:5px;">Have a license key?</div>
+          <div class="license-input-wrap">
+            <input class="license-input" id="licenseInput" type="text" placeholder="CLAU-XXXX-XXXX-XXXX" spellcheck="false" />
+            <button class="activate-btn" id="activateBtn">Activate</button>
+          </div>
+          <div class="license-msg" id="licenseMsg"></div>
+        </div>
+
+        <div id="license-deactivate-section" style="display:none;">
+          <button class="deactivate-btn" id="deactivateBtn">Remove license</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom alert thresholds — Pro only -->
+    <div class="settings-section" id="custom-alerts-section">
+      <div class="settings-title">Alert Thresholds</div>
+      <div style="background-color:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;color:var(--text4);margin-bottom:10px;line-height:1.5;">
+          Get notified when any limit reaches these percentages.
+        </div>
+        <div class="threshold-row">
+          <span class="threshold-label">Warning</span>
+          <div style="display:flex;align-items:center;gap:3px;">
+            <input class="threshold-input" id="threshWarn" type="number" min="1" max="99" value="80" />
+            <span class="threshold-unit">%</span>
+          </div>
+        </div>
+        <div class="threshold-row">
+          <span class="threshold-label">Critical</span>
+          <div style="display:flex;align-items:center;gap:3px;">
+            <input class="threshold-input" id="threshCrit" type="number" min="1" max="100" value="95" />
+            <span class="threshold-unit">%</span>
+          </div>
+        </div>
+        <button class="save-thresholds-btn" id="saveThresholdsBtn">Save thresholds</button>
+      </div>
+    </div>
+
+    <!-- Buy section — free users -->
+    <div class="settings-section" id="buy-section">
+      <div class="settings-title">Get Pro — $3.99 one-time</div>
+      <div class="pro-features" style="margin-bottom:10px;">
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Full year activity heatmap</div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Lifetime history — never resets</div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Export data as CSV or JSON</div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Custom alert thresholds</div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Monthly &amp; weekly breakdowns</div>
+      </div>
+      <a class="buy-btn" id="buyBtn" href="https://clautics.org/pages/pricing.html" target="_blank">
+        ◈ &nbsp;Get Clautics Pro — $3.99
+      </a>
+      <div style="font-size:9px;color:var(--text5);text-align:center;margin-top:6px;">
+        One-time payment · No subscription · Works forever
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <a href="https://clautics.org" target="_blank">clautics.org</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:clauticsinfo@gmail.com">support</a>
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

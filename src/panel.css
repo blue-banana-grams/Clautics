@@ -1,0 +1,147 @@
+/* Clautics — src/panel.css — injected into claude.ai */
+
+@keyframes cly-enter {
+  from { transform: translateX(18px) scale(0.97); opacity: 0; }
+  to   { transform: translateX(0)    scale(1);    opacity: 1; }
+}
+
+/* ── Theme variables ─────────────────────────────────────────────────── */
+
+#clautics-root {
+  --cly-bg:      #1e1e1e;
+  --cly-surface: #2a2a2a;
+  --cly-bg3:     #333333;
+  --cly-border:  #3d3d3d;
+  --cly-text:    #ececec;
+  --cly-text3:   #aaaaaa;
+  --cly-text4:   #777777;
+  --cly-text5:   #505050;
+  --cly-accent:  #cc785c;
+  --cly-warn:    #e5534b;
+  --cly-caution: #d4974a;
+}
+
+#clautics-root[data-theme="light"] {
+  --cly-bg:      #f9f9f8;
+  --cly-surface: #ffffff;
+  --cly-bg3:     #efefed;
+  --cly-border:  #ddddd8;
+  --cly-text:    #1a1a1a;
+  --cly-text3:   #555550;
+  --cly-text4:   #888882;
+  --cly-text5:   #aaaaaa;
+  --cly-warn:    #d93025;
+  --cly-caution: #b5770d;
+}
+
+/* ── Root panel ─────────────────────────────────────────────────────── */
+
+#clautics-root {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  background-color: #1e1e1e;
+  color: var(--cly-text);
+  border: 1px solid var(--cly-border);
+  box-shadow: 0 0 0 1px rgba(204,120,92,0.25), 0 4px 20px rgba(0,0,0,0.3);
+  border-radius: 10px;
+  position: fixed;
+  top: 72px; right: 14px;
+  width: 218px;
+  z-index: 999999;
+  overflow: hidden;
+  user-select: none;
+  animation: cly-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+#clautics-root[data-theme="light"] {
+  background-color: #f9f9f8;
+  box-shadow: 0 0 0 1px rgba(204,120,92,0.2), 0 4px 16px rgba(0,0,0,0.1);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+#cly-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px 7px;
+  background-color: var(--cly-surface);
+  border-bottom: 1px solid var(--cly-border);
+  cursor: grab;
+}
+#cly-header:active { cursor: grabbing; }
+
+#cly-logo { color: var(--cly-accent); font-size: 13px; line-height: 1; flex-shrink: 0; }
+#cly-name {
+  flex: 1;
+  font-weight: 600; font-size: 11px;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--cly-text4);
+}
+
+.cly-hd-btn {
+  background: none;
+  border: 1px solid var(--cly-border);
+  border-radius: 5px; color: var(--cly-text4);
+  font-size: 11px; width: 20px; height: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 0;
+  transition: color 0.15s, background-color 0.15s;
+  flex-shrink: 0;
+}
+.cly-hd-btn:hover { background-color: var(--cly-bg3); color: var(--cly-text); }
+
+/* ── Body ───────────────────────────────────────────────────────────── */
+
+#cly-body {
+  display: flex; flex-direction: column;
+  padding: 10px 10px 8px; gap: 8px;
+  background-color: var(--cly-bg);
+  overflow: hidden; max-height: 600px; opacity: 1;
+  transition: max-height 0.28s cubic-bezier(0.4,0,0.2,1),
+              opacity 0.22s ease, padding 0.22s ease;
+}
+#cly-body.cly-collapsed {
+  max-height: 0 !important; opacity: 0;
+  padding-top: 0; padding-bottom: 0;
+}
+
+/* ── Limits ─────────────────────────────────────────────────────────── */
+
+#cly-limits { display: flex; flex-direction: column; gap: 9px; }
+.cly-limit-row { display: flex; flex-direction: column; gap: 4px; }
+.cly-limit-top { display: flex; align-items: center; justify-content: space-between; }
+.cly-limit-label { font-size: 12px; color: var(--cly-text4); }
+.cly-limit-pct   { font-size: 12px; font-weight: 600; }
+.cly-track { height: 3px; border-radius: 2px; background-color: var(--cly-bg3); overflow: hidden; }
+.cly-fill  { height: 100%; border-radius: 2px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+.cly-limit-meta  { font-size: 11px; color: var(--cly-text5); }
+.cly-reset-label { color: var(--cly-text5); }
+.cly-empty { font-size: 12px; color: var(--cly-text5); text-align: center; padding: 4px 0; line-height: 1.6; }
+
+/* ── Peak banner ────────────────────────────────────────────────────── */
+
+#cly-peak-banner {
+  display: none; align-items: center; gap: 6px;
+  background-color: rgba(212,151,74,0.1);
+  border: 1px solid rgba(212,151,74,0.28);
+  border-radius: 7px; padding: 5px 8px;
+  font-size: 11px; color: var(--cly-caution); line-height: 1.45;
+}
+#cly-peak-banner.cly-peak-visible { display: flex; }
+#cly-peak-icon { font-size: 11px; flex-shrink: 0; }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+
+#cly-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px solid var(--cly-border);
+  padding-top: 6px; margin-top: 2px;
+}
+#cly-tier-badge {
+  font-size: 10px; font-weight: 500;
+  background-color: var(--cly-bg3); color: var(--cly-text3);
+  border: 1px solid var(--cly-border);
+  border-radius: 5px; padding: 1px 6px; letter-spacing: 0.03em;
+}
+#cly-updated { font-size: 10px; color: var(--cly-text5); }
