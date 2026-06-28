@@ -214,35 +214,50 @@ function pruneDailyUsage(du) {
   return copy;
 }
 
-// ── Smart alerts (custom thresholds) ──────────────────────────────────────
+// ── Smart alerts ──────────────────────────────────────────────────────────
+// Only fires for Pro users. Uses custom thresholds saved by the popup's
+// settings page, falling back to 80 % (warning) and 95 % (critical).
 
-async function checkAlerts(state) {
-  const { limits, alertsSent } = state;
-  if (!limits) return alertsSent;
+async function checkAlerts(limits, alertsSent) {
+  // Gate on Pro
+  const { isPro } = await chrome.storage.local.get('isPro');
+  if (!isPro) return alertsSent || {};
 
-  // Read thresholds — fall back to 80/95 defaults
+  if (!limits) return alertsSent || {};
+
   const { alertWarnPct, alertCritPct } = await chrome.storage.local.get(['alertWarnPct', 'alertCritPct']);
-  const thresholds = [alertWarnPct || 80, alertCritPct || 95];
-
-  const updated = { ...alertsSent };
-  const trackedKeys = [
-    { key: 'session',      pct: limits.session?.pct,      label: '5-hr session' },
-    { key: 'weekly',       pct: limits.weekly?.pct,       label: 'Weekly' },
-    { key: 'sonnetWeekly', pct: limits.sonnetWeekly?.pct, label: 'Sonnet weekly' },
-    { key: 'opusWeekly',   pct: limits.opusWeekly?.pct,   label: 'Opus weekly' },
+  const warnPct = Number(alertWarnPct) || 80;
+  const critPct = Number(alertCritPct) || 95;
+  const thresholds = [
+    { pct: warnPct, label: 'Warning' },
+    { pct: critPct, label: 'Critical' },
   ];
 
-  for (const { key, pct, label } of trackedKeys) {
-    if (pct == null) continue;
-    for (const threshold of thresholds) {
-      const alertKey = `${key}_${threshold}`;
-      if (!updated[alertKey] && pct >= threshold) {
-        chrome.notifications.create(`clt_${Date.now()}`, {
-          type: 'basic',
-          title: `Clautics: ${label} at ${threshold}%`,
-          message: `You've used ${pct.toFixed(0)}% of your ${label} limit.`,
-          iconUrl: chrome.runtime.getURL('icons/icon48.png'),
-        });
+  const updated = { ...(alertsSent || {}) };
+
+  const tracked = [
+    { key: 'session',      val: limits.session?.pct,      name: '5-hr session' },
+    { key: 'weekly',       val: limits.weekly?.pct,       name: 'Weekly' },
+    { key: 'sonnetWeekly', val: limits.sonnetWeekly?.pct, name: 'Sonnet weekly' },
+    { key: 'opusWeekly',   val: limits.opusWeekly?.pct,   name: 'Opus weekly' },
+  ];
+
+  for (const { key, val, name } of tracked) {
+    if (val == null) continue;
+    for (const { pct: threshold, label: severity } of thresholds) {
+      // Use fixed 'warn'/'crit' keys so they survive threshold value changes
+      const alertKey = `${key}_${severity}`;
+      if (!updated[alertKey] && val >= threshold) {
+        try {
+          await chrome.notifications.create(`clt_${key}_${severity}_${Date.now()}`, {
+            type:     'basic',
+            title:    `Clautics — ${name} at ${threshold}%`,
+            message:  `${severity}: You've used ${val.toFixed(0)}% of your ${name} limit.`,
+            iconUrl:  chrome.runtime.getURL('icons/icon48.png'),
+          });
+        } catch (err) {
+          console.warn('Clautics: notification failed', err);
+        }
         updated[alertKey] = true;
       }
     }
@@ -271,15 +286,15 @@ async function poll() {
     lastPercent[key] = limits[key]?.pct ?? 0;
   }
 
-  // Reset per-limit alert flags when a limit resets (big drop)
-  const alertsSentUpdated = { ...state.alertsSent };
-  const { alertWarnPct, alertCritPct } = await chrome.storage.local.get(['alertWarnPct', 'alertCritPct']);
-  const activeThresholds = [alertWarnPct || 80, alertCritPct || 95];
+  // Reset per-limit alert flags when a limit resets (big drop in pct)
+  // Keys use 'warn'/'crit' labels (not numeric values) so they're stable
+  const alertsSentUpdated = { ...(state.alertsSent || {}) };
   for (const key of ['session', 'weekly', 'sonnetWeekly', 'opusWeekly']) {
-    const prev = state.lastPercent[key] ?? 0;
+    const prev = state.lastPercent?.[key] ?? 0;
     const curr = limits[key]?.pct ?? 0;
     if (prev > 50 && curr < 10) {
-      for (const t of activeThresholds) delete alertsSentUpdated[`${key}_${t}`];
+      delete alertsSentUpdated[`${key}_Warning`];
+      delete alertsSentUpdated[`${key}_Critical`];
     }
   }
 
@@ -293,7 +308,7 @@ async function poll() {
     orgId,
     lastPercent,
     fetchedAt: Date.now(),
-    alertsSent: await checkAlerts({ limits, alertsSent: alertsSentUpdated }),
+    alertsSent: await checkAlerts(limits, alertsSentUpdated),
   };
 
   await save(newState);
@@ -320,8 +335,9 @@ chrome.webRequest.onCompleted.addListener(
       await save({ ...state, dailyUsage: daily, heatmap });
     }
 
+    // Call poll directly — setTimeout is unreliable in MV3 service workers
     if (isCompletion || pathname.includes('/usage')) {
-      setTimeout(poll, 150);
+      poll().catch(console.warn);
     }
   },
   { urls: ['*://claude.ai/api/organizations/*'] }
