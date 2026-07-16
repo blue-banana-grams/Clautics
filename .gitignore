@@ -1,2 +1,9 @@
 .DS_Store
 *.zip
+
+# Never commit secrets
+.env
+.env.*
+
+# Personal Claude Code settings/tooling config, not shared project config
+.claude/

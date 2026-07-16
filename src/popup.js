@@ -127,7 +127,7 @@ activateBtn.addEventListener('click', async () => {
   activateBtn.textContent = 'Checking…';
   licenseInput.className  = 'license-input';
   licenseMsg.className    = 'license-msg';
-  chrome.runtime.sendMessage({ type: 'clautics_activate', key }, ({ valid }) => {
+  chrome.runtime.sendMessage({ type: 'clautics_activate', key }, ({ valid, error }) => {
     activateBtn.disabled    = false;
     activateBtn.textContent = 'Activate';
     if (valid) {
@@ -137,7 +137,7 @@ activateBtn.addEventListener('click', async () => {
       applyProUI();
     } else {
       licenseInput.className = 'license-input error';
-      showLicenseMsg('Invalid key — check your email from Lemon Squeezy.', 'fail');
+      showLicenseMsg(error || 'Invalid key — check your email from Lemon Squeezy.', 'fail');
     }
   });
 });

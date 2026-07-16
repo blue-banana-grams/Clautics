@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] - 2026-07-16
+
+- Added rate limiting to license activation (5 attempts per 15-minute window), mirroring the same fix on the desktop app — protects against a compromised local script brute-forcing license keys and reduces load on Lemon Squeezy's API
+- Surfaced the specific activation failure reason (invalid key vs. rate-limited vs. network error) in the popup instead of a single generic message
+- Security audit hygiene: removed a leaked GitHub token from git remote config, added .env exclusions to .gitignore, excluded local dev-tooling config (.claude/) from version control
+
 ## [1.1.0] - 2026-07-15
 
 - Added drag-to-resize on the floating on-page panel (all edges and corners)

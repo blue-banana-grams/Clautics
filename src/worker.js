@@ -42,9 +42,43 @@ const LS_ACTIVATE = 'https://api.lemonsqueezy.com/v1/licenses/activate';
 const LS_VALIDATE = 'https://api.lemonsqueezy.com/v1/licenses/validate';
 const LICENSE_CACHE_MS = 24 * 60 * 60 * 1000;
 
+// ── Attempt limiting ─────────────────────────────────────────────────────
+// activateLicense() is the closest thing this extension has to an auth
+// route — cap it the same way a login endpoint would be: 5 attempts per
+// rolling 15-minute window. Once exceeded, refuse locally (no network call)
+// until the window clears.
+
+const MAX_LICENSE_ATTEMPTS = 5;
+const LICENSE_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+async function checkLicenseAttemptLimit() {
+  const { licenseAttempts } = await chrome.storage.local.get('licenseAttempts');
+  const now = Date.now();
+  const attempts = (licenseAttempts || []).filter((t) => now - t < LICENSE_ATTEMPT_WINDOW_MS);
+  if (attempts.length >= MAX_LICENSE_ATTEMPTS) {
+    const retryAfterMs = LICENSE_ATTEMPT_WINDOW_MS - (now - attempts[0]);
+    return { blocked: true, retryAfterMs: Math.max(0, retryAfterMs) };
+  }
+  return { blocked: false, attempts };
+}
+
 // Called when the user clicks "Activate" in the popup.
-// Hits /activate, stores instance_id, marks isPro.
+// Hits /activate, stores instance_id, marks isPro. Returns a plain boolean —
+// the human-readable failure reason (invalid format, rate-limited, Lemon
+// Squeezy rejection, network error) goes in `licenseError`.
 async function activateLicense(key) {
+  if (typeof key !== 'string' || !key.trim() || key.length > 200) {
+    await chrome.storage.local.set({ isPro: false, licenseError: 'Invalid license key format' });
+    return false;
+  }
+
+  const { blocked, retryAfterMs, attempts } = await checkLicenseAttemptLimit();
+  if (blocked) {
+    const minutes = Math.ceil(retryAfterMs / 60_000);
+    await chrome.storage.local.set({ isPro: false, licenseError: `Too many attempts — try again in ${minutes} min` });
+    return false;
+  }
+
   try {
     const res = await fetch(LS_ACTIVATE, {
       method: 'POST',
@@ -60,6 +94,9 @@ async function activateLicense(key) {
 
     // "active" or "inactive" keys are valid; "disabled" / "expired" are not
     const valid = activated && (status === 'active' || status === 'inactive');
+
+    if (valid) await chrome.storage.local.set({ licenseAttempts: [] });
+    else await chrome.storage.local.set({ licenseAttempts: [...attempts, Date.now()] });
 
     await chrome.storage.local.set({
       licenseKey:       key,
@@ -358,7 +395,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     return true;
   }
   if (msg.type === 'clautics_activate') {
-    activateLicense(msg.key).then(valid => reply({ valid }));
+    activateLicense(msg.key).then(async (valid) => {
+      const { licenseError } = await chrome.storage.local.get('licenseError');
+      reply({ valid, error: valid ? null : licenseError });
+    });
     return true;
   }
   if (msg.type === 'clautics_check_license') {
