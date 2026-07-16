@@ -333,6 +333,24 @@
     .save-thresholds-btn:hover { background-color: var(--accent); color: #fff; border-color: var(--accent); }
     .save-thresholds-btn.saved { color: #4caf50; border-color: #4caf50; background-color: var(--bg3); }
 
+    /* Panel size preset — sets the default/reset size of the on-page panel */
+    .panel-size-hint { font-size: 10px; color: var(--text5); line-height: 1.4; margin-bottom: 9px; }
+    .panel-size-options {
+      display: flex; gap: 4px;
+      background-color: var(--bg3); border-radius: 7px; padding: 3px;
+    }
+    .panel-size-options button {
+      flex: 1; background: none; border: none; border-radius: 5px;
+      color: var(--text4); font-size: 11px; font-weight: 600;
+      padding: 6px 4px; cursor: pointer; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .panel-size-options button:hover { color: var(--text); }
+    .panel-size-options button.active {
+      background-color: var(--surface); color: var(--accent);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
     /* Buy / upgrade */
     .buy-btn {
       display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -488,6 +506,21 @@
 
         <div id="license-deactivate-section" style="display:none;">
           <button class="deactivate-btn" id="deactivateBtn">Remove license</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- On-page panel size (default / reset size for the floating widget) -->
+    <div class="settings-section">
+      <div class="settings-title">On-Page Panel Size</div>
+      <div class="settings-card">
+        <div class="panel-size-hint">
+          Sets the default size of the floating panel on claude.ai. Dragging its edges there is temporary — it always resets to this size when reopened.
+        </div>
+        <div class="panel-size-options" id="panelSizeOptions">
+          <button type="button" data-size="compact">Compact</button>
+          <button type="button" data-size="default">Default</button>
+          <button type="button" data-size="large">Large</button>
         </div>
       </div>
     </div>

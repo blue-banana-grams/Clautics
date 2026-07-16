@@ -5,6 +5,22 @@
   'use strict';
   if (document.getElementById('clautics-root')) return;
 
+  // ── Panel size presets ───────────────────────────────────────────────
+  // The permanent default lives in chrome.storage (set from the toolbar
+  // popup's Settings view) and applies every time the panel is (re)opened.
+  // Manual edge-dragging during a session is temporary: it never persists
+  // across a reload or a minimize/restore cycle, so the panel always comes
+  // back to this default instead of getting stuck at some odd size.
+
+  const PANEL_SIZE_KEY = 'cly_panel_width';
+  const PANEL_WIDTHS = { compact: 190, default: 218, large: 280 };
+  let defaultWidth = PANEL_WIDTHS.default;
+
+  const RESIZE_MIN_WIDTH  = 160;
+  const RESIZE_MAX_WIDTH  = 360;
+  const RESIZE_MIN_HEIGHT = 90;
+  const RESIZE_MAX_HEIGHT = 560;
+
   // ── Panel DOM ──────────────────────────────────────────────────────────
 
   const root = document.createElement('div');
@@ -14,7 +30,7 @@
       <span id="cly-logo">◈</span>
       <span id="cly-name">Clautics</span>
       <button class="cly-hd-btn" id="cly-theme"    title="Toggle light/dark">☀️</button>
-      <button class="cly-hd-btn" id="cly-collapse" title="Collapse">−</button>
+      <button class="cly-hd-btn" id="cly-collapse" title="Minimize">−</button>
     </div>
     <div id="cly-body">
       <div id="cly-limits"></div>
@@ -27,10 +43,13 @@
         <span id="cly-updated"></span>
       </div>
     </div>
+    <button id="cly-mini-btn" title="Expand Clautics">
+      <span id="cly-mini-dot"></span>
+    </button>
   `;
   document.body.appendChild(root);
 
-  // ── Restore saved position ─────────────────────────────────────────────
+  // ── Restore saved position (size is intentionally not persisted) ───────
 
   try {
     const saved = JSON.parse(localStorage.getItem('cly_pos') || 'null');
@@ -40,14 +59,37 @@
     }
   } catch {}
 
-  // ── Collapse / expand ─────────────────────────────────────────────────
+  function applyDefaultWidth() {
+    root.style.width = `${defaultWidth}px`;
+    root.style.height = '';
+  }
+  applyDefaultWidth();
 
-  let collapsed = false;
-  document.getElementById('cly-collapse').addEventListener('click', () => {
-    collapsed = !collapsed;
-    document.getElementById('cly-body').classList.toggle('cly-collapsed', collapsed);
-    document.getElementById('cly-collapse').textContent = collapsed ? '+' : '−';
+  chrome.storage.local.get(PANEL_SIZE_KEY, (r) => {
+    const pref = r[PANEL_SIZE_KEY];
+    if (pref && PANEL_WIDTHS[pref] && !mini) {
+      defaultWidth = PANEL_WIDTHS[pref];
+      if (!resize) applyDefaultWidth();
+    }
   });
+
+  // ── Minimize / expand (whole panel becomes a small square button) ──────
+
+  let mini = false;
+
+  function setMini(next) {
+    mini = next;
+    root.classList.toggle('cly-mini', mini);
+    if (mini) {
+      root.dataset.expandedTop = root.style.top;
+    } else {
+      // Reset to the default size every time the panel is (re)opened.
+      applyDefaultWidth();
+    }
+  }
+
+  document.getElementById('cly-collapse').addEventListener('click', () => setMini(true));
+  document.getElementById('cly-mini-btn').addEventListener('click', () => setMini(false));
 
   // ── Draggable ─────────────────────────────────────────────────────────
 
@@ -83,6 +125,104 @@
     } catch {}
   });
 
+  // ── Resizable (drag the edges/corners) — session-only, never persisted ─
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  let resize = null;
+
+  function beginResize(edge, e) {
+    if (mini) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = root.getBoundingClientRect();
+    resize = {
+      edge,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: rect.width,
+      startHeight: rect.height,
+      startTop: rect.top,
+      startRightGap: window.innerWidth - rect.right,
+    };
+    root.classList.add('cly-resizing');
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    if (!resize) return;
+    const { edge, startX, startY, startWidth, startHeight, startTop, startRightGap } = resize;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (edge.includes('e')) {
+      const newWidth = clamp(startWidth + dx, RESIZE_MIN_WIDTH, RESIZE_MAX_WIDTH);
+      root.style.width = `${newWidth}px`;
+      root.style.right = `${startRightGap - (newWidth - startWidth)}px`;
+    } else if (edge.includes('w')) {
+      const newWidth = clamp(startWidth - dx, RESIZE_MIN_WIDTH, RESIZE_MAX_WIDTH);
+      root.style.width = `${newWidth}px`;
+      root.style.right = `${startRightGap}px`;
+    }
+
+    if (edge.includes('s')) {
+      const newHeight = clamp(startHeight + dy, RESIZE_MIN_HEIGHT, RESIZE_MAX_HEIGHT);
+      root.style.height = `${newHeight}px`;
+      root.style.top    = `${startTop}px`;
+    } else if (edge.includes('n')) {
+      const newHeight = clamp(startHeight - dy, RESIZE_MIN_HEIGHT, RESIZE_MAX_HEIGHT);
+      root.style.height = `${newHeight}px`;
+      root.style.top    = `${(startTop + startHeight) - newHeight}px`;
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!resize) return;
+    const { edge } = resize;
+    root.classList.remove('cly-resizing');
+
+    // Never leave dead space: if the panel was stretched taller than its
+    // content actually needs, snap the height back down to fit instead of
+    // keeping a mostly-empty box. Shrinking below content height is fine —
+    // the body just scrolls (see #cly-body { overflow-y: auto }).
+    //
+    // #cly-body is flex:1 with overflow-y:auto, so its scrollHeight can't be
+    // read while root is still forced to the dragged (possibly oversized)
+    // height — an auto-overflow element's scrollHeight is never smaller than
+    // its own current clientHeight, which would just echo the dragged size
+    // back. Temporarily go auto to get a clean natural-size measurement.
+    if (edge.includes('n') || edge.includes('s')) {
+      const draggedHeight = root.style.height;
+      const draggedBottom = root.getBoundingClientRect().bottom;
+      const draggedBoxHeight = root.getBoundingClientRect().height;
+
+      root.style.height = '';
+      const naturalBoxHeight = root.getBoundingClientRect().height;
+
+      if (draggedBoxHeight > naturalBoxHeight + 0.5) {
+        // Natural content is shorter than what was dragged — stay auto.
+        if (edge.includes('n')) {
+          // Top was moving; keep the bottom edge anchored when snapping.
+          root.style.top = `${draggedBottom - naturalBoxHeight}px`;
+        }
+      } else {
+        // Deliberately shrunk below content height — keep it, body scrolls.
+        root.style.height = draggedHeight;
+      }
+    }
+
+    resize = null;
+    try {
+      localStorage.setItem('cly_pos', JSON.stringify({ right: root.style.right, top: root.style.top }));
+    } catch {}
+  });
+
+  ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].forEach((edge) => {
+    const handle = document.createElement('div');
+    handle.className = `cly-resize-handle cly-resize-${edge}`;
+    handle.addEventListener('mousedown', (e) => beginResize(edge, e));
+    root.appendChild(handle);
+  });
+
   // ── Helpers ───────────────────────────────────────────────────────────
 
   const LABEL = {
@@ -116,12 +256,16 @@
 
   // ── Render limits ─────────────────────────────────────────────────────
 
+  let currentLimits = {};
+
   function renderLimits(limits) {
+    currentLimits = limits || {};
     const container = document.getElementById('cly-limits');
     container.innerHTML = '';
-    const entries = Object.entries(limits).filter(([, v]) => v !== null);
+    const entries = Object.entries(currentLimits).filter(([, v]) => v !== null);
     if (!entries.length) {
       container.innerHTML = '<div class="cly-empty">No limits found.<br>Open a conversation first.</div>';
+      renderMiniDot();
       return;
     }
     for (const [key, limit] of entries) {
@@ -144,6 +288,19 @@
       row.appendChild(top); row.appendChild(track); row.appendChild(meta);
       container.appendChild(row);
     }
+    renderMiniDot();
+  }
+
+  // ── Mini dot (reflects the highest active limit while minimized) ───────
+
+  function renderMiniDot() {
+    const dot = document.getElementById('cly-mini-dot');
+    if (!dot) return;
+    let topPct = 0;
+    for (const v of Object.values(currentLimits)) {
+      if (v && typeof v.pct === 'number' && v.pct > topPct) topPct = v.pct;
+    }
+    dot.style.backgroundColor = pctColor(topPct);
   }
 
   // ── Peak banner ───────────────────────────────────────────────────────
@@ -198,9 +355,12 @@
     }
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
 
-    document.getElementById('cly-today').textContent  = todayVal > 0 ? String(todayVal)      : '—';
-    document.getElementById('cly-streak').textContent = streak > 0   ? `${streak}🔥`        : '—';
-    document.getElementById('cly-avg').textContent    = avg > 0       ? avg.toFixed(1)        : '—';
+    const todayEl = document.getElementById('cly-today');
+    const streakEl = document.getElementById('cly-streak');
+    const avgEl = document.getElementById('cly-avg');
+    if (todayEl)  todayEl.textContent  = todayVal > 0 ? String(todayVal) : '—';
+    if (streakEl) streakEl.textContent = streak > 0   ? `${streak}🔥`   : '—';
+    if (avgEl)    avgEl.textContent    = avg > 0       ? avg.toFixed(1)  : '—';
   }
 
   // ── Footer ────────────────────────────────────────────────────────────
@@ -265,6 +425,10 @@
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'clautics_theme')  applyPanelTheme(msg.theme);
     if (msg.type === 'clautics_update') applyState(msg.data);
+    if (msg.type === 'clautics_panel_size' && PANEL_WIDTHS[msg.size]) {
+      defaultWidth = PANEL_WIDTHS[msg.size];
+      if (!mini && !resize) applyDefaultWidth();
+    }
   });
 
 })();

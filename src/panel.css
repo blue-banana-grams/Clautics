@@ -48,16 +48,26 @@
   position: fixed;
   top: 72px; right: 14px;
   width: 218px;
+  min-width: 160px;
+  min-height: 90px;
   z-index: 999999;
   overflow: hidden;
   user-select: none;
+  display: flex;
+  flex-direction: column;
   animation: cly-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Lets descendants reformat themselves via @container queries based on
+     the panel's actual width, instead of sitting fixed-size in more space. */
+  container-type: inline-size;
+  container-name: cly;
 }
 
 #clautics-root[data-theme="light"] {
   background-color: #f9f9f8;
   box-shadow: 0 0 0 1px rgba(204,120,92,0.2), 0 4px 16px rgba(0,0,0,0.1);
 }
+
+#clautics-root.cly-resizing { transition: none !important; user-select: none; }
 
 /* ── Header ─────────────────────────────────────────────────────────── */
 
@@ -67,6 +77,7 @@
   background-color: var(--cly-surface);
   border-bottom: 1px solid var(--cly-border);
   cursor: grab;
+  flex: 0 0 auto;
 }
 #cly-header:active { cursor: grabbing; }
 
@@ -97,13 +108,8 @@
   display: flex; flex-direction: column;
   padding: 10px 10px 8px; gap: 8px;
   background-color: var(--cly-bg);
-  overflow: hidden; max-height: 600px; opacity: 1;
-  transition: max-height 0.28s cubic-bezier(0.4,0,0.2,1),
-              opacity 0.22s ease, padding 0.22s ease;
-}
-#cly-body.cly-collapsed {
-  max-height: 0 !important; opacity: 0;
-  padding-top: 0; padding-bottom: 0;
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
 }
 
 /* ── Limits ─────────────────────────────────────────────────────────── */
@@ -145,3 +151,96 @@
   border-radius: 5px; padding: 1px 6px; letter-spacing: 0.03em;
 }
 #cly-updated { font-size: 10px; color: var(--cly-text5); }
+
+/* ── Responsive reformatting ────────────────────────────────────────────
+   The panel's own font size, spacing, and bar thickness scale with
+   whatever width the user drags it to, so a bigger panel actually shows
+   more/larger content instead of the same tiny content plus blank space. */
+
+@container cly (max-width: 199px) {
+  #cly-header  { padding: 6px 8px 5px; gap: 5px; }
+  #cly-name    { font-size: 10px; }
+  #cly-body    { padding: 8px 8px 6px; gap: 6px; }
+  #cly-limits  { gap: 7px; }
+  .cly-limit-label, .cly-limit-pct { font-size: 11px; }
+  .cly-limit-meta { font-size: 10px; }
+  .cly-track   { height: 3px; }
+  #cly-peak-banner { font-size: 10px; padding: 4px 7px; }
+}
+
+@container cly (min-width: 260px) {
+  #cly-header  { padding: 10px 13px 9px; gap: 8px; }
+  #cly-logo    { font-size: 15px; }
+  #cly-name    { font-size: 12px; }
+  #cly-body    { padding: 13px 13px 10px; gap: 11px; }
+  #cly-limits  { gap: 12px; }
+  .cly-limit-label, .cly-limit-pct { font-size: 13px; }
+  .cly-limit-meta { font-size: 11px; }
+  .cly-track   { height: 4px; }
+  #cly-peak-banner { font-size: 12px; padding: 7px 10px; }
+  #cly-tier-badge, #cly-updated { font-size: 11px; }
+}
+
+@container cly (min-width: 320px) {
+  #cly-header  { padding: 12px 16px 11px; gap: 9px; }
+  #cly-logo    { font-size: 17px; }
+  #cly-name    { font-size: 13px; }
+  #cly-body    { padding: 16px 16px 13px; gap: 14px; }
+  #cly-limits  { gap: 14px; }
+  .cly-limit-label, .cly-limit-pct { font-size: 14px; }
+  .cly-limit-meta { font-size: 12px; }
+  .cly-track   { height: 5px; }
+  #cly-peak-banner { font-size: 13px; padding: 8px 11px; }
+}
+
+/* ── Resize handles (drag the edges/corners to resize the panel) ──────── */
+
+.cly-resize-handle {
+  position: absolute;
+  z-index: 5;
+}
+.cly-resize-n, .cly-resize-s { left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.cly-resize-e, .cly-resize-w { top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+.cly-resize-n { top: 0; }
+.cly-resize-s { bottom: 0; }
+.cly-resize-e { right: 0; }
+.cly-resize-w { left: 0; }
+
+.cly-resize-ne, .cly-resize-nw, .cly-resize-se, .cly-resize-sw {
+  width: 10px; height: 10px;
+}
+.cly-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.cly-resize-nw { top: 0; left: 0;  cursor: nwse-resize; }
+.cly-resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.cly-resize-sw { bottom: 0; left: 0;  cursor: nesw-resize; }
+
+/* ── Mini (minimized) state — the whole panel becomes a small square ──── */
+
+#clautics-root.cly-mini {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 0; min-height: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+#clautics-root.cly-mini #cly-header,
+#clautics-root.cly-mini #cly-body,
+#clautics-root.cly-mini .cly-resize-handle {
+  display: none !important;
+}
+
+#cly-mini-btn {
+  display: none;
+  width: 100%; height: 100%;
+  align-items: center; justify-content: center;
+  background: none; border: none; padding: 0; margin: 0;
+  cursor: pointer;
+}
+#clautics-root.cly-mini #cly-mini-btn { display: flex; }
+
+#cly-mini-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background-color: var(--cly-accent);
+  box-shadow: 0 0 0 3px var(--cly-bg3);
+}

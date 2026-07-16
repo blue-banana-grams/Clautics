@@ -176,6 +176,31 @@ saveThresholdsBtn.addEventListener('click', () => {
   });
 });
 
+// ── On-page panel size preset ────────────────────────────────────────────
+
+const PANEL_SIZE_KEY = 'cly_panel_width';
+
+function setActivePanelSizeButton(size) {
+  document.querySelectorAll('#panelSizeOptions button').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.size === size);
+  });
+}
+
+chrome.storage.local.get(PANEL_SIZE_KEY, (r) => {
+  setActivePanelSizeButton(r[PANEL_SIZE_KEY] || 'default');
+});
+
+document.querySelectorAll('#panelSizeOptions button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const size = btn.dataset.size;
+    setActivePanelSizeButton(size);
+    chrome.storage.local.set({ [PANEL_SIZE_KEY]: size });
+    chrome.tabs.query({ url: '*://claude.ai/*' }, (tabs) => {
+      for (const tab of tabs) chrome.tabs.sendMessage(tab.id, { type: 'clautics_panel_size', size }).catch(() => {});
+    });
+  });
+});
+
 // ── Peak banner ───────────────────────────────────────────────────────────
 
 function getPeakInfo(heatmap) {
