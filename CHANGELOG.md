@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2] - 2026-07-21
+
+- Fixed the floating panel's collapsed/minimized button to show the actual Clautics logo instead of a plain dot
+- Made the collapsed panel button draggable/moveable (previously only the expanded header could be dragged)
+- Hardened the background worker's message listener to reject messages from outside the extension
+- Added input length limits and validation to the license activation field
+- Debounced usage polling triggered by webRequest completions to avoid hammering claude.ai's API
+
 ## [1.1.1] - 2026-07-16
 
 - Added rate limiting to license activation (5 attempts per 15-minute window), mirroring the same fix on the desktop app — protects against a compromised local script brute-forcing license keys and reduces load on Lemon Squeezy's API

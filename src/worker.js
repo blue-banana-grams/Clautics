@@ -358,6 +358,9 @@ async function poll() {
 
 // ── Listeners ──────────────────────────────────────────────────────────────
 
+const POLL_DEBOUNCE_MS = 5000;
+let lastPollAt = 0;
+
 chrome.webRequest.onCompleted.addListener(
   async (details) => {
     const pathname = new URL(details.url).pathname;
@@ -372,9 +375,15 @@ chrome.webRequest.onCompleted.addListener(
       await save({ ...state, dailyUsage: daily, heatmap });
     }
 
-    // Call poll directly — setTimeout is unreliable in MV3 service workers
+    // Call poll directly — setTimeout is unreliable in MV3 service workers.
+    // Debounced so a burst of completions/usage calls during heavy chat
+    // activity can't hammer claude.ai's usage endpoint.
     if (isCompletion || pathname.includes('/usage')) {
-      poll().catch(console.warn);
+      const now = Date.now();
+      if (now - lastPollAt >= POLL_DEBOUNCE_MS) {
+        lastPollAt = now;
+        poll().catch(console.warn);
+      }
     }
   },
   { urls: ['*://claude.ai/api/organizations/*'] }
@@ -385,7 +394,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'clautics_poll') poll();
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  // Only accept messages from this extension's own popup/content scripts,
+  // never from arbitrary web pages (defense in depth alongside the fact
+  // that externally_connectable is not configured in manifest.json).
+  if (sender.id !== chrome.runtime.id) return false;
+
   if (msg.type === 'clautics_get') {
     load().then(reply);
     return true;
@@ -395,7 +409,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     return true;
   }
   if (msg.type === 'clautics_activate') {
-    activateLicense(msg.key).then(async (valid) => {
+    if (typeof msg.key !== 'string' || msg.key.trim().length === 0 || msg.key.length > 200) {
+      reply({ valid: false, error: 'Invalid license key format.' });
+      return true;
+    }
+    activateLicense(msg.key.trim()).then(async (valid) => {
       const { licenseError } = await chrome.storage.local.get('licenseError');
       reply({ valid, error: valid ? null : licenseError });
     });

@@ -44,10 +44,13 @@
       </div>
     </div>
     <button id="cly-mini-btn" title="Expand Clautics">
+      <img id="cly-mini-logo" alt="Clautics" draggable="false" />
       <span id="cly-mini-dot"></span>
     </button>
   `;
   document.body.appendChild(root);
+
+  document.getElementById('cly-mini-logo').src = chrome.runtime.getURL('icons/icon48.png');
 
   // ── Restore saved position (size is intentionally not persisted) ───────
 
@@ -89,28 +92,39 @@
   }
 
   document.getElementById('cly-collapse').addEventListener('click', () => setMini(true));
-  document.getElementById('cly-mini-btn').addEventListener('click', () => setMini(false));
+  // Expanding from mini happens on mouseup-without-drag, handled below
+  // alongside the drag logic (mousedown on cly-mini-btn also starts a drag).
 
   // ── Draggable ─────────────────────────────────────────────────────────
 
   const header = document.getElementById('cly-header');
-  let dragging = false, dragStartX, dragStartY, panelStartRight, panelStartTop;
+  const miniBtn = document.getElementById('cly-mini-btn');
+  let dragging = false, dragMoved = false, dragStartX, dragStartY, panelStartRight, panelStartTop;
 
-  header.addEventListener('mousedown', (e) => {
+  // DRAG_THRESHOLD distinguishes a click (expand the mini button) from a
+  // drag (move the panel) — both start with the same mousedown on cly-mini-btn.
+  const DRAG_THRESHOLD = 4;
+
+  function startDrag(e) {
     if (e.target.classList.contains('cly-hd-btn')) return;
     dragging = true;
+    dragMoved = false;
     dragStartX = e.clientX; dragStartY = e.clientY;
     const rect = root.getBoundingClientRect();
     panelStartRight = window.innerWidth - rect.right;
     panelStartTop   = rect.top;
     root.style.transition = 'none';
     e.preventDefault();
-  });
+  }
+
+  header.addEventListener('mousedown', startDrag);
+  miniBtn.addEventListener('mousedown', startDrag);
 
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) dragMoved = true;
     root.style.right  = `${Math.max(0, Math.min(window.innerWidth  - 80, panelStartRight - dx))}px`;
     root.style.top    = `${Math.max(0, Math.min(window.innerHeight - 60, panelStartTop   + dy))}px`;
     root.style.bottom = 'auto';
@@ -123,6 +137,9 @@
     try {
       localStorage.setItem('cly_pos', JSON.stringify({ right: root.style.right, top: root.style.top }));
     } catch {}
+    // A plain click (no movement) on the mini button expands the panel;
+    // a drag just moves it.
+    if (mini && !dragMoved) setMini(false);
   });
 
   // ── Resizable (drag the edges/corners) — session-only, never persisted ─
@@ -273,8 +290,11 @@
       const color = pctColor(pct);
       const row = document.createElement('div'); row.className = 'cly-limit-row';
       const top = document.createElement('div'); top.className = 'cly-limit-top';
-      top.innerHTML = `<span class="cly-limit-label">${LABEL[key] || key}</span>
-                       <span class="cly-limit-pct" style="color:${color}">${pct.toFixed(0)}%</span>`;
+      const label = document.createElement('span'); label.className = 'cly-limit-label';
+      label.textContent = LABEL[key] || key;
+      const pctEl = document.createElement('span'); pctEl.className = 'cly-limit-pct';
+      pctEl.style.color = color; pctEl.textContent = `${pct.toFixed(0)}%`;
+      top.appendChild(label); top.appendChild(pctEl);
       const track = document.createElement('div'); track.className = 'cly-track';
       const fill  = document.createElement('div'); fill.className = 'cly-fill';
       fill.style.width = `${Math.min(pct, 100)}%`; fill.style.background = color;
@@ -283,7 +303,11 @@
       if (key === 'extraUsage' && limit.usedCents != null) {
         meta.textContent = `$${(limit.usedCents/100).toFixed(2)} / $${(limit.limitCents/100).toFixed(2)}`;
       } else if (limit.resetsAt) {
-        meta.innerHTML = `<span class="cly-reset-label" data-ts="${limit.resetsAt}">↺ ${fmtCountdown(limit.resetsAt)}</span>`;
+        const resetLabel = document.createElement('span');
+        resetLabel.className = 'cly-reset-label';
+        resetLabel.dataset.ts = limit.resetsAt;
+        resetLabel.textContent = `↺ ${fmtCountdown(limit.resetsAt)}`;
+        meta.appendChild(resetLabel);
       }
       row.appendChild(top); row.appendChild(track); row.appendChild(meta);
       container.appendChild(row);
