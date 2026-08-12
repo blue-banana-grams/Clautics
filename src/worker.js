@@ -1,8 +1,12 @@
 // Clautics — src/worker.js
 'use strict';
 
+importScripts('/src/common.js');
+
 const HEATMAP_HOURS = 24 * 7;
 const STORAGE_KEY   = 'clautics_v1';
+const CONTENT_JS    = ['src/common.js', 'src/page.js'];
+const CONTENT_CSS   = ['src/panel.css'];
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
@@ -27,8 +31,6 @@ function defaultState() {
     fetchedAt:   null,
   };
 }
-
-// ── License validation ─────────────────────────────────────────────────────
 
 // ── License validation ─────────────────────────────────────────────────────
 // Lemon Squeezy requires two separate calls:
@@ -237,15 +239,18 @@ function updateHeatmap(heatmap, delta) {
 
 // ── Daily usage ────────────────────────────────────────────────────────────
 
-function dailyKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+// Drops entries older than 400 days. Keys are ISO-ish yyyy-mm-dd, so a string
+// compare against the cutoff key is the same as a date compare.
+// Runs at most once a day rather than on every single completion, where it was
+// re-scanning (and rebuilding) the whole map for nothing.
+let lastPruneKey = null;
 
-function pruneDailyUsage(du) {
+function pruneDailyUsage(du, todayKey) {
+  if (lastPruneKey === todayKey) return du;
+  lastPruneKey = todayKey;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 400);
-  const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+  const cutoffKey = CLY.dateKey(cutoff);
   const copy = { ...du };
   for (const k of Object.keys(copy)) { if (k < cutoffKey) delete copy[k]; }
   return copy;
@@ -368,8 +373,8 @@ chrome.webRequest.onCompleted.addListener(
 
     if (isCompletion) {
       const state = await load();
-      const key   = dailyKey();
-      const daily = pruneDailyUsage({ ...(state.dailyUsage || {}) });
+      const key   = CLY.dateKey(new Date());
+      const daily = pruneDailyUsage({ ...(state.dailyUsage || {}) }, key);
       daily[key]  = (daily[key] || 0) + 1;
       const heatmap = updateHeatmap(state.heatmap, 1);
       await save({ ...state, dailyUsage: daily, heatmap });
@@ -425,5 +430,48 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => { validateLicense(); poll(); });
+// ── Updates ────────────────────────────────────────────────────────────────
+// Clautics ships through the Chrome Web Store, so Chrome downloads new
+// versions on its own (roughly every 5 hours, and on browser start). What it
+// does NOT do on its own is make that update land cleanly in tabs that are
+// already open, which is what the two listeners below are for.
+
+// Chrome holds a downloaded update until every extension context is idle, and
+// a service worker woken every minute by an alarm is rarely idle — an update
+// could sit unapplied for a long time. Taking it immediately is safe here:
+// all state lives in chrome.storage, so there is nothing in memory to lose.
+chrome.runtime.onUpdateAvailable.addListener(() => chrome.runtime.reload());
+
+// The instant an update applies, the content script in every open claude.ai
+// tab is orphaned: its panel stays on screen but every chrome.* call throws
+// "Extension context invalidated", so the numbers silently freeze until the
+// user happens to reload. Swap in the new build instead of reloading the tab,
+// which would throw away whatever the user had typed into Claude.
+async function reinjectContentScripts() {
+  let tabs = [];
+  try { tabs = await chrome.tabs.query({ url: '*://claude.ai/*' }); } catch { return; }
+
+  for (const tab of tabs) {
+    try {
+      // page.js bails out if #clautics-root already exists, so the stale panel
+      // left behind by the previous version has to go first.
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => document.getElementById('clautics-root')?.remove(),
+      });
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: CONTENT_CSS });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_JS });
+    } catch (err) {
+      // Tab closed, navigated away, or is a page we can't touch — skip it.
+      console.warn('Clautics: could not refresh panel in tab', tab.id, err);
+    }
+  }
+}
+
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  validateLicense();
+  poll();
+  if (reason === 'update') reinjectContentScripts();
+});
+
 chrome.runtime.onStartup.addListener(() => { validateLicense(); poll(); });

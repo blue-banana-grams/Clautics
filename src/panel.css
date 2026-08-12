@@ -67,7 +67,8 @@
   box-shadow: 0 0 0 1px rgba(204,120,92,0.2), 0 4px 16px rgba(0,0,0,0.1);
 }
 
-#clautics-root.cly-resizing { transition: none !important; user-select: none; }
+#clautics-root.cly-resizing,
+#clautics-root.cly-dragging { transition: none !important; user-select: none; }
 
 /* ── Header ─────────────────────────────────────────────────────────── */
 
@@ -78,6 +79,9 @@
   border-bottom: 1px solid var(--cly-border);
   cursor: grab;
   flex: 0 0 auto;
+  /* Claim touch gestures for dragging — without this a touch drag scrolls
+     claude.ai underneath instead of moving the panel. */
+  touch-action: none;
 }
 #cly-header:active { cursor: grabbing; }
 
@@ -135,7 +139,7 @@
   font-size: 11px; color: var(--cly-caution); line-height: 1.45;
 }
 #cly-peak-banner.cly-peak-visible { display: flex; }
-#cly-peak-icon { font-size: 11px; flex-shrink: 0; }
+.cly-pk-i { font-size: 11px; flex-shrink: 0; }
 
 /* ── Footer ─────────────────────────────────────────────────────────── */
 
@@ -198,6 +202,7 @@
 .cly-resize-handle {
   position: absolute;
   z-index: 5;
+  touch-action: none;
 }
 .cly-resize-n, .cly-resize-s { left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
 .cly-resize-e, .cly-resize-w { top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
@@ -236,15 +241,16 @@
   align-items: center; justify-content: center;
   background: none; border: none; padding: 0; margin: 0;
   cursor: grab;
+  touch-action: none;
 }
 #cly-mini-btn:active { cursor: grabbing; }
 #clautics-root.cly-mini #cly-mini-btn { display: flex; }
 
 #cly-mini-logo {
   width: 20px; height: 20px;
-  object-fit: contain;
+  display: block;
   pointer-events: none;
-  -webkit-user-drag: none;
+  overflow: visible; /* keep the stroke from being clipped at the viewBox edge */
 }
 
 #cly-mini-dot {

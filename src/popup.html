@@ -97,7 +97,8 @@
     .limits { display: flex; flex-direction: column; gap: 9px; margin-bottom: 13px; }
     .lrow   { display: flex; flex-direction: column; gap: 4px; }
     .lrow-top   { display: flex; align-items: center; justify-content: space-between; }
-    .lrow-label { font-size: 11px; color: var(--text4); }
+    .lrow-label { font-size: 11px; color: var(--text4); display: flex; align-items: center; }
+    .lrow-dot   { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
     .lrow-right { display: flex; align-items: center; gap: 8px; }
     .lrow-pct   { font-size: 12px; font-weight: 600; }
     .lrow-reset { font-size: 10px; color: var(--text5); }
@@ -140,7 +141,11 @@
     /* ── 7-day bar chart ── */
     #seven-day-section { margin-bottom: 13px; }
     .chart-wrap {
-      display: flex; align-items: flex-end;
+      /* Must stretch, not flex-end: the columns have to fill all 52px so the
+         .chart-bar-wrap inside them has height for `flex: 1` to divide up.
+         With flex-end each column shrank to its label height and every bar
+         collapsed to its 2px minimum. */
+      display: flex; align-items: stretch;
       gap: 4px; height: 52px;
     }
     .chart-col {
@@ -399,8 +404,8 @@
 
     <!-- Peak banner -->
     <div id="peak-banner">
-      <span id="peak-icon">⚠️</span>
-      <span id="peak-text"></span>
+      <span class="cly-pk-i">⚠️</span>
+      <span class="cly-pk-t"></span>
     </div>
 
     <!-- Limits -->
@@ -574,6 +579,7 @@
   </div>
 </div>
 
+<script src="common.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

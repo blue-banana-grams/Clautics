@@ -1,59 +1,25 @@
 // Clautics — src/popup.js
 'use strict';
 
-const LABEL = {
-  session:      '5-hr session',
-  weekly:       'Weekly',
-  sonnetWeekly: 'Sonnet weekly',
-  opusWeekly:   'Opus weekly',
-  extraUsage:   'Extra usage',
-};
-const KEY_ORDER   = ['session', 'weekly', 'sonnetWeekly', 'opusWeekly', 'extraUsage'];
-const TIER_NAMES  = { free: 'Free', pro: 'Pro', team: 'Team', max_5x: 'Max 5×', max_20x: 'Max 20×' };
-const DAYS_SHORT  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const FREE_DAYS   = 7;
-const CLR_ACCENT  = '#cc785c';
-const CLR_WARN    = '#e5534b';
-const CLR_CAUTION = '#d4974a';
+// Labels, tier names, percentage severity, countdown and date-key formatting,
+// and the peak-hours heuristic all live in common.js — loaded just above this
+// file — because the on-page panel needs exactly the same logic.
+
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FREE_DAYS  = 7;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-// Returns [solidColor, gradientStart] for a given pct
-function pctColor(pct) {
-  if (pct >= 95) return CLR_WARN;
-  if (pct >= 80) return CLR_CAUTION;
-  return CLR_ACCENT;
-}
+const $ = (id) => document.getElementById(id);
 
-function pctGradient(pct) {
-  if (pct >= 95) return `linear-gradient(to right, #f07a70, ${CLR_WARN})`;
-  if (pct >= 80) return `linear-gradient(to right, #e8b870, ${CLR_CAUTION})`;
-  return `linear-gradient(to right, #e09878, ${CLR_ACCENT})`;
-}
-
-function fmtCountdown(ts) {
-  if (!ts) return '';
-  const ms = ts - Date.now();
-  if (ms <= 0) return 'resetting…';
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
-  if (h === 0)  return `${m}m`;
-  return `${h}h ${m}m`;
-}
-
-function fmtDateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-}
-
-function todayKey() { return fmtDateKey(new Date()); }
+// Lighter shade the bar fades in from, per severity.
+const GRADIENT_FROM = { warn: '#f07a70', caution: '#e8b870', accent: '#e09878' };
 
 // ── Pro state ─────────────────────────────────────────────────────────────
 
 let isPro = false;
 let currentDailyUsage = {};
-let currentHeatmap = [];
 
 async function loadProStatus() {
   const { isPro: stored } = await chrome.storage.local.get('isPro');
@@ -61,35 +27,26 @@ async function loadProStatus() {
   applyProUI();
 }
 
+// Everything gated behind Pro, shown/hidden together.
+const PRO_SECTIONS = ['custom-alerts-section', 'breakdown-section', 'export-section', 'year-section'];
+
 function applyProUI() {
-  const show = (id, visible) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = visible ? (el.tagName === 'DIV' ? 'block' : 'inline-block') : 'none';
-  };
-  document.getElementById('proBadge').style.display       = isPro ? 'inline-block' : 'none';
-  document.getElementById('upgrade-banner').classList.toggle('show', !isPro);
-  show('buy-section', !isPro);
-  show('custom-alerts-section', isPro);
-  show('breakdown-section', isPro);
-  show('export-section', isPro);
-  // Year heatmap only visible to Pro users
-  const yearSection = document.getElementById('year-section');
-  if (yearSection) yearSection.style.display = isPro ? 'block' : 'none';
-  document.getElementById('license-activate-section').style.display  = isPro ? 'none' : 'block';
-  document.getElementById('license-deactivate-section').style.display = isPro ? 'block' : 'none';
-  document.getElementById('pro-status-icon').textContent  = isPro ? '✅' : '🔓';
-  document.getElementById('pro-status-label').textContent = isPro ? 'Pro — unlocked' : 'Free plan';
-  document.getElementById('pro-status-sub').textContent   = isPro
+  $('proBadge').style.display = isPro ? 'inline-block' : 'none';
+  $('upgrade-banner').classList.toggle('show', !isPro);
+  $('buy-section').style.display = isPro ? 'none' : 'block';
+  for (const id of PRO_SECTIONS) $(id).style.display = isPro ? 'block' : 'none';
+
+  $('license-activate-section').style.display   = isPro ? 'none' : 'block';
+  $('license-deactivate-section').style.display = isPro ? 'block' : 'none';
+  $('pro-status-icon').textContent  = isPro ? '✅' : '🔓';
+  $('pro-status-label').textContent = isPro ? 'Pro — unlocked' : 'Free plan';
+  $('pro-status-sub').textContent   = isPro
     ? 'Full year history · export · all features'
     : '7-day history · basic stats';
-  // Re-render heatmap with correct gating
-  if (currentDailyUsage) renderYearHeatmap(currentDailyUsage);
-  if (isPro) {
-    renderBreakdown(currentDailyUsage);
-    document.getElementById('breakdown-section').style.display = 'block';
-    document.getElementById('export-section').style.display    = 'block';
-    document.getElementById('custom-alerts-section').style.display = 'block';
-  }
+
+  // Re-render with the correct gating
+  renderYearHeatmap(currentDailyUsage);
+  if (isPro) renderBreakdown(currentDailyUsage);
 }
 
 // ── View switching ────────────────────────────────────────────────────────
@@ -99,21 +56,21 @@ let currentView = 'main';
 function showView(name) {
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(`view-${name}`).classList.add('active');
-  document.getElementById('refreshBtn').style.display = name === 'main' ? 'flex' : 'none';
-  document.getElementById('settingsBtn').textContent  = name === 'settings' ? '←' : '⚙';
+  $(`view-${name}`).classList.add('active');
+  $('refreshBtn').style.display = name === 'main' ? 'flex' : 'none';
+  $('settingsBtn').textContent  = name === 'settings' ? '←' : '⚙';
 }
 
-document.getElementById('settingsBtn').addEventListener('click', () => {
+$('settingsBtn').addEventListener('click', () => {
   showView(currentView === 'settings' ? 'main' : 'settings');
 });
-document.getElementById('upgrade-banner').addEventListener('click', () => showView('settings'));
+$('upgrade-banner').addEventListener('click', () => showView('settings'));
 
 // ── License ───────────────────────────────────────────────────────────────
 
-const licenseInput = document.getElementById('licenseInput');
-const activateBtn  = document.getElementById('activateBtn');
-const licenseMsg   = document.getElementById('licenseMsg');
+const licenseInput = $('licenseInput');
+const activateBtn  = $('activateBtn');
+const licenseMsg   = $('licenseMsg');
 
 function showLicenseMsg(text, type) {
   licenseMsg.textContent = text;
@@ -144,7 +101,7 @@ activateBtn.addEventListener('click', async () => {
 
 licenseInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') activateBtn.click(); });
 
-document.getElementById('deactivateBtn').addEventListener('click', async () => {
+$('deactivateBtn').addEventListener('click', async () => {
   await chrome.storage.local.set({ licenseKey: null, licenseInstanceId: null, isPro: false, licenseCheckedAt: null });
   isPro = false;
   licenseInput.value = '';
@@ -155,17 +112,17 @@ document.getElementById('deactivateBtn').addEventListener('click', async () => {
 
 // ── Custom alert thresholds ───────────────────────────────────────────────
 
-const saveThresholdsBtn = document.getElementById('saveThresholdsBtn');
+const saveThresholdsBtn = $('saveThresholdsBtn');
 
 // Load saved values
 chrome.storage.local.get(['alertWarnPct', 'alertCritPct'], (r) => {
-  if (r.alertWarnPct) document.getElementById('threshWarn').value = r.alertWarnPct;
-  if (r.alertCritPct) document.getElementById('threshCrit').value = r.alertCritPct;
+  if (r.alertWarnPct) $('threshWarn').value = r.alertWarnPct;
+  if (r.alertCritPct) $('threshCrit').value = r.alertCritPct;
 });
 
 saveThresholdsBtn.addEventListener('click', () => {
-  const warn = Math.min(99,  Math.max(1, parseInt(document.getElementById('threshWarn').value) || 80));
-  const crit = Math.min(100, Math.max(1, parseInt(document.getElementById('threshCrit').value) || 95));
+  const warn = Math.min(99,  Math.max(1, parseInt($('threshWarn').value) || 80));
+  const crit = Math.min(100, Math.max(1, parseInt($('threshCrit').value) || 95));
   chrome.storage.local.set({ alertWarnPct: warn, alertCritPct: crit, alertsSent: {} }, () => {
     saveThresholdsBtn.textContent = '✓ Saved';
     saveThresholdsBtn.classList.add('saved');
@@ -201,179 +158,140 @@ document.querySelectorAll('#panelSizeOptions button').forEach((btn) => {
   });
 });
 
-// ── Peak banner ───────────────────────────────────────────────────────────
-
-function getPeakInfo(heatmap) {
-  const now = new Date();
-  const hour = now.getHours(), day = now.getDay();
-  const isWeekday  = day >= 1 && day <= 5;
-  const isBizHours = hour >= 9 && hour < 18;
-  const epochHour  = Math.floor(Date.now() / 3_600_000);
-  const history    = (heatmap || []).filter(h => h.hour < epochHour && h.hour >= epochHour - 24);
-  const avg        = history.length ? history.reduce((s, h) => s + h.delta, 0) / history.length : 0;
-  const nowDelta   = (heatmap || []).find(h => h.hour === epochHour)?.delta ?? 0;
-  const isYourPeak = avg > 0 && nowDelta > avg * 1.4;
-  if (isWeekday && isBizHours && isYourPeak) return { show: true, text: 'Peak hours — Claude may be slower', icon: '🔴' };
-  if (isWeekday && isBizHours)               return { show: true, text: 'Typical peak hours for Claude',    icon: '⚠️' };
-  if (isYourPeak)                            return { show: true, text: 'Above your usual usage rate',       icon: '📈' };
-  return { show: false };
-}
-
-function renderPeakBanner(heatmap) {
-  const banner = document.getElementById('peak-banner');
-  const info   = getPeakInfo(heatmap);
-  if (info.show) {
-    document.getElementById('peak-text').textContent = info.text;
-    document.getElementById('peak-icon').textContent = info.icon;
-    banner.classList.add('visible');
-  } else {
-    banner.classList.remove('visible');
-  }
-}
-
 // ── Limits ────────────────────────────────────────────────────────────────
 
 function renderLimits(limits) {
-  const container = document.getElementById('limits');
+  const container = $('limits');
   if (!limits) { container.innerHTML = '<div class="empty">No data yet.<br>Open claude.ai first.</div>'; return; }
 
-  const entries = Object.entries(limits)
-    .filter(([, v]) => v !== null)
-    .sort(([a], [b]) => {
-      const ai = KEY_ORDER.indexOf(a), bi = KEY_ORDER.indexOf(b);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-
+  // CLY.ORDER is already the display order, so selecting by it sorts for free.
+  const entries = CLY.ORDER.map((key) => [key, limits[key]]).filter(([, v]) => v != null);
   if (!entries.length) { container.innerHTML = '<div class="empty">No active limits found.</div>'; return; }
 
-  container.innerHTML = '';
+  const frag = document.createDocumentFragment();
   for (const [key, limit] of entries) {
-    const pct = limit.pct ?? 0, color = pctColor(pct);
-    const row   = document.createElement('div'); row.className = 'lrow';
-    const top   = document.createElement('div'); top.className = 'lrow-top';
+    const pct   = limit.pct ?? 0;
+    const level = CLY.level(pct);
+    const color = `var(--${level})`;
+
+    const row = document.createElement('div'); row.className = 'lrow';
+    const top = document.createElement('div'); top.className = 'lrow-top';
 
     // Colored dot indicator
     const dot = document.createElement('span');
-    dot.style.cssText = `display:inline-block;width:6px;height:6px;border-radius:50%;background-color:${color};margin-right:6px;flex-shrink:0;`;
+    dot.className = 'lrow-dot';
+    dot.style.backgroundColor = color;
 
     const label = document.createElement('span'); label.className = 'lrow-label';
-    label.style.display = 'flex'; label.style.alignItems = 'center';
-    label.appendChild(dot);
-    label.appendChild(document.createTextNode(LABEL[key] || key));
+    label.append(dot, CLY.LABELS[key] || key);
 
-    const right = document.createElement('div'); right.className = 'lrow-right';
     const pctEl = document.createElement('span'); pctEl.className = 'lrow-pct';
     pctEl.style.color = color;
     pctEl.textContent = `${pct.toFixed(0)}%`;
 
+    const right = document.createElement('div'); right.className = 'lrow-right';
+    right.appendChild(pctEl);
+    top.append(label, right);
+
     const resetEl = document.createElement('span'); resetEl.className = 'lrow-reset';
     if (key === 'extraUsage' && limit.usedCents != null) {
-      resetEl.textContent = `$${(limit.usedCents/100).toFixed(2)} / $${(limit.limitCents/100).toFixed(2)}`;
+      resetEl.textContent = `$${(limit.usedCents / 100).toFixed(2)} / $${(limit.limitCents / 100).toFixed(2)}`;
     } else if (limit.resetsAt) {
       resetEl.dataset.ts  = limit.resetsAt;
-      resetEl.textContent = `↺ ${fmtCountdown(limit.resetsAt)}`;
+      resetEl.textContent = `↺ ${CLY.countdown(limit.resetsAt)}`;
     }
-
-    right.appendChild(pctEl);
-    top.appendChild(label); top.appendChild(right);
 
     const track = document.createElement('div'); track.className = 'track';
     const fill  = document.createElement('div'); fill.className = 'fill';
-    // Use explicit backgroundColor so there's no CSS specificity conflict,
-    // then overlay a gradient for the "color-coded" visual the website promises.
+    // Explicit backgroundColor so there's no CSS specificity conflict, then a
+    // gradient on top for the "color-coded" visual the website promises.
     fill.style.backgroundColor = color;
-    fill.style.backgroundImage = pct > 5 ? pctGradient(pct) : 'none';
+    fill.style.backgroundImage = pct > 5 ? `linear-gradient(to right, ${GRADIENT_FROM[level]}, ${color})` : 'none';
     fill.style.width = `${Math.min(pct, 100)}%`;
     track.appendChild(fill);
 
-    row.appendChild(top); row.appendChild(track);
+    row.append(top, track);
     if (resetEl.textContent) row.appendChild(resetEl);
-    container.appendChild(row);
+    frag.appendChild(row);
   }
+  container.replaceChildren(frag);
 }
 
 // ── Daily stats pills ─────────────────────────────────────────────────────
 
 function renderDailyStats(dailyUsage) {
   const du = dailyUsage || {};
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
 
-  const todayVal = du[fmtDateKey(today)] || 0;
+  const todayVal = du[CLY.dateKey(today)] || 0;
 
-  // Streak: consecutive days ending today with >0 messages
-  let streak = 0;
+  // Streak (consecutive days ending today with >0) and the 30-day average come
+  // out of one backward walk over a single Date cursor, and it stops as soon as
+  // both answers are settled — the old code allocated up to 395 Date objects
+  // and always scanned the full window even when the streak broke on day one.
+  const cur = new Date(today);
+  let streak = 0, counting = true, sum = 0, n = 0;
   for (let i = 0; i < 365; i++) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    if ((du[fmtDateKey(d)] || 0) > 0) streak++; else break;
+    const v = du[CLY.dateKey(cur)] || 0;
+    if (counting) { if (v > 0) streak++; else counting = false; }
+    if (i < 30 && v > 0) { sum += v; n++; }
+    if (!counting && i >= 29) break;
+    cur.setDate(cur.getDate() - 1);
   }
+  const avg = n ? sum / n : 0;
 
-  // Avg: over last 30 days that have any data
-  const vals = [];
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    const v = du[fmtDateKey(d)] || 0;
-    if (v > 0) vals.push(v);
-  }
-  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-
-  document.getElementById('stat-today').textContent  = todayVal > 0 ? todayVal : '—';
-  document.getElementById('stat-streak').innerHTML   = streak > 0 ? `${streak}<span class="fire"> 🔥</span>` : '—';
-  document.getElementById('stat-avg').textContent    = avg > 0 ? avg.toFixed(1) : '—';
+  $('stat-today').textContent = todayVal > 0 ? todayVal : '—';
+  $('stat-streak').innerHTML  = streak > 0 ? `${streak}<span class="fire"> 🔥</span>` : '—';
+  $('stat-avg').textContent   = avg > 0 ? avg.toFixed(1) : '—';
 }
 
 // ── 7-day bar chart ───────────────────────────────────────────────────────
 
 function render7DayChart(dailyUsage) {
-  const container = document.getElementById('seven-day-chart');
   const du = dailyUsage || {};
-  const today = new Date(); today.setHours(0,0,0,0);
+  const cur = new Date(); cur.setHours(0, 0, 0, 0);
+  cur.setDate(cur.getDate() - 6);
 
   const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    days.push({ date: d, key: fmtDateKey(d), isToday: i === 0 });
+  for (let i = 0; i < 7; i++) {
+    const key = CLY.dateKey(cur);
+    days.push({ key, dow: cur.getDay(), val: du[key] || 0, isToday: i === 6 });
+    cur.setDate(cur.getDate() + 1);
   }
+  const maxVal = Math.max(...days.map(d => d.val), 1);
 
-  const vals   = days.map(d => du[d.key] || 0);
-  const maxVal = Math.max(...vals, 1);
-
-  container.innerHTML = '';
-  days.forEach(({ date, isToday }, i) => {
-    const val     = vals[i];
-    const heightPct = Math.max((val / maxVal) * 100, val > 0 ? 6 : 3);
-    const dayName   = DAYS_SHORT[date.getDay()];
-
+  const frag = document.createDocumentFragment();
+  for (const { key, dow, val, isToday } of days) {
     const col = document.createElement('div');
     col.className = 'chart-col';
-    col.title = `${fmtDateKey(date)}: ${val > 0 ? val + ' msg' : 'no messages'}`;
+    col.title = `${key}: ${val > 0 ? val + ' msg' : 'no messages'}`;
 
     const wrap = document.createElement('div');
     wrap.className = 'chart-bar-wrap';
 
     const bar = document.createElement('div');
     bar.className = isToday ? 'chart-bar today' : val > 0 ? 'chart-bar past-active' : 'chart-bar past';
-    bar.style.height = `${heightPct}%`;
+    bar.style.height = `${Math.max((val / maxVal) * 100, val > 0 ? 6 : 3)}%`;
+    wrap.appendChild(bar);
 
     const dayLbl = document.createElement('div');
     dayLbl.className   = 'chart-day-lbl';
-    dayLbl.textContent = isToday ? 'Today' : dayName;
+    dayLbl.textContent = isToday ? 'Today' : DAYS_SHORT[dow];
 
     const countLbl = document.createElement('div');
     countLbl.className   = `chart-count-lbl${val === 0 ? ' zero' : ''}`;
     countLbl.textContent = val > 0 ? String(val) : '—';
 
-    wrap.appendChild(bar);
-    col.appendChild(wrap);
-    col.appendChild(dayLbl);
-    col.appendChild(countLbl);
-    container.appendChild(col);
-  });
+    col.append(wrap, dayLbl, countLbl);
+    frag.appendChild(col);
+  }
+  $('seven-day-chart').replaceChildren(frag);
 }
 
 // ── Year heatmap ──────────────────────────────────────────────────────────
 
 function renderYearHeatmap(dailyUsage) {
-  const container = document.getElementById('daily-usage');
+  const container = $('daily-usage');
   const du = dailyUsage || {};
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -383,11 +301,10 @@ function renderYearHeatmap(dailyUsage) {
   startDate.setDate(startDate.getDate() - 364);
   startDate.setDate(startDate.getDate() - startDate.getDay()); // align to Sunday
 
-  const totalDays  = Math.floor((today - startDate) / 86_400_000) + 1;
+  const totalDays  = Math.round((today - startDate) / 86_400_000) + 1;
   const totalWeeks = Math.ceil(totalDays / 7);
 
-  const allVals = Object.values(du).filter(Number.isFinite);
-  const maxVal  = Math.max(...allVals, 0.001);
+  const maxVal = Math.max(...Object.values(du).filter(Number.isFinite), 0.001);
 
   function cellColor(val, locked) {
     if (locked || !val || val <= 0) return 'var(--bg3)';
@@ -399,49 +316,52 @@ function renderYearHeatmap(dailyUsage) {
     return '#cc785c';
   }
 
-  // Month labels
-  const monthCols = new Map();
+  // One forward walk over a single Date cursor builds both the cells and the
+  // month-label row. The old version re-derived every date with a fresh
+  // `new Date()` in two separate nested loops (≈750 allocations) and then did
+  // a linear scan of a spread Map per column to find each label.
+  const monthLabels = new Array(totalWeeks).fill('');
+  const seenMonths  = new Set();
+  const cells = [];
+  const cur = new Date(startDate);
+
   for (let w = 0; w < totalWeeks; w++) {
     for (let d = 0; d < 7; d++) {
-      const date = new Date(startDate); date.setDate(date.getDate() + w*7 + d);
-      if (date > today) break;
-      const m = date.getMonth();
-      if (date.getDate() <= 7 && !monthCols.has(m)) monthCols.set(m, w);
+      const isFuture = cur > today;
+      if (!isFuture && cur.getDate() <= 7 && !seenMonths.has(cur.getMonth())) {
+        seenMonths.add(cur.getMonth());
+        monthLabels[w] = MONTHS[cur.getMonth()];
+      }
+      const locked = !isPro && cur < freeCutoff;
+      const key = CLY.dateKey(cur);
+      const val = isFuture ? null : (du[key] || 0);
+      const bg  = isFuture ? 'transparent' : cellColor(val, locked);
+      const tip = isFuture ? '' : locked ? 'Unlock Pro for full history' : `${key}: ${val ? val + ' msg' : 'no messages'}`;
+      cells.push(`<div style="background:${bg};border-radius:1px;${locked ? 'opacity:0.25;' : ''}" title="${tip}"></div>`);
+      cur.setDate(cur.getDate() + 1);
     }
   }
 
-  let monthRow = `<div style="display:grid;grid-template-columns:repeat(${totalWeeks},1fr);gap:1px;height:12px;margin-bottom:2px;">`;
-  for (let w = 0; w < totalWeeks; w++) {
-    const entry = [...monthCols.entries()].find(([, col]) => col === w);
-    monthRow += `<div style="font-size:8px;color:var(--text5);white-space:nowrap;overflow:visible;line-height:12px;">${entry ? MONTHS[entry[0]] : ''}</div>`;
-  }
-  monthRow += '</div>';
+  const cols = `repeat(${totalWeeks},1fr)`;
+  const monthRow =
+    `<div style="display:grid;grid-template-columns:${cols};gap:1px;height:12px;margin-bottom:2px;">` +
+    monthLabels.map(m => `<div style="font-size:8px;color:var(--text5);white-space:nowrap;overflow:visible;line-height:12px;">${m}</div>`).join('') +
+    '</div>';
 
-  let grid = `<div style="display:grid;grid-template-columns:repeat(${totalWeeks},1fr);grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:1px;height:36px;">`;
-  for (let w = 0; w < totalWeeks; w++) {
-    for (let d = 0; d < 7; d++) {
-      const date   = new Date(startDate); date.setDate(date.getDate() + w*7 + d);
-      const isFuture = date > today;
-      const locked   = !isPro && date < freeCutoff;
-      const key  = fmtDateKey(date);
-      const val  = isFuture ? null : (du[key] || 0);
-      const bg   = isFuture ? 'transparent' : cellColor(val, locked);
-      const tip  = isFuture ? '' : locked ? 'Unlock Pro for full history' : `${key}: ${val ? val + ' msg' : 'no messages'}`;
-      grid += `<div style="background:${bg};border-radius:1px;${locked ? 'opacity:0.25;' : ''}" title="${tip}"></div>`;
-    }
-  }
-  grid += '</div>';
+  const grid =
+    `<div style="display:grid;grid-template-columns:${cols};grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:1px;height:36px;">` +
+    cells.join('') + '</div>';
 
   // Lock overlay for free users
-  const lockOverlay = !isPro ? `
+  const lockOverlay = isPro ? '' : `
     <div style="margin-top:5px;font-size:10px;color:var(--text5);text-align:center;line-height:1.5;">
       Showing last ${FREE_DAYS} days · <span style="color:var(--accent);cursor:pointer;" id="unlock-link">Unlock full year →</span>
-    </div>` : '';
+    </div>`;
 
   container.innerHTML = monthRow + grid + lockOverlay;
 
   if (!isPro) {
-    const link = document.getElementById('unlock-link');
+    const link = $('unlock-link');
     if (link) link.addEventListener('click', () => showView('settings'));
   }
 }
@@ -449,7 +369,7 @@ function renderYearHeatmap(dailyUsage) {
 // ── Monthly & weekly breakdown (Pro) ─────────────────────────────────────
 
 function renderBreakdown(dailyUsage) {
-  const container = document.getElementById('breakdown-grid');
+  const container = $('breakdown-grid');
   const du = dailyUsage || {};
   const today = new Date(); today.setHours(0,0,0,0);
 
@@ -473,7 +393,7 @@ function renderBreakdown(dailyUsage) {
     let total = 0;
     const cur = new Date(start);
     while (cur <= end) {
-      total += du[fmtDateKey(cur)] || 0;
+      total += du[CLY.dateKey(cur)] || 0;
       cur.setDate(cur.getDate() + 1);
     }
     return total;
@@ -511,34 +431,27 @@ function renderBreakdown(dailyUsage) {
 
 // ── Export ────────────────────────────────────────────────────────────────
 
-function exportCSV(dailyUsage) {
-  const du = dailyUsage || {};
-  const rows = [['date', 'messages']];
-  const keys = Object.keys(du).sort();
-  for (const key of keys) rows.push([key, du[key]]);
-  const csv = rows.map(r => r.join(',')).join('\n');
-  downloadFile('clautics-export.csv', 'text/csv', csv);
-}
-
-function exportJSON(dailyUsage) {
-  const du = dailyUsage || {};
-  const data = Object.keys(du).sort().map(date => ({ date, messages: du[date] }));
-  downloadFile('clautics-export.json', 'application/json', JSON.stringify(data, null, 2));
-}
-
 function downloadFile(filename, type, content) {
-  const blob = new Blob([content], { type });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a   = document.createElement('a');
   a.href = url; a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
+  a.remove();
   URL.revokeObjectURL(url);
 }
 
-document.getElementById('exportCsvBtn').addEventListener('click', () => exportCSV(currentDailyUsage));
-document.getElementById('exportJsonBtn').addEventListener('click', () => exportJSON(currentDailyUsage));
+$('exportCsvBtn').addEventListener('click', () => {
+  const dates = Object.keys(currentDailyUsage).sort();
+  const csv = ['date,messages', ...dates.map(d => `${d},${currentDailyUsage[d]}`)].join('\n');
+  downloadFile('clautics-export.csv', 'text/csv', csv);
+});
+
+$('exportJsonBtn').addEventListener('click', () => {
+  const data = Object.keys(currentDailyUsage).sort()
+    .map(date => ({ date, messages: currentDailyUsage[date] }));
+  downloadFile('clautics-export.json', 'application/json', JSON.stringify(data, null, 2));
+});
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -546,29 +459,24 @@ function applyState(state) {
   if (!state) return;
 
   currentDailyUsage = state.dailyUsage || {};
-  currentHeatmap    = state.heatmap    || [];
 
-  const tierBadge = document.getElementById('tierBadge');
-  const name = TIER_NAMES[state.tier];
-  if (name) { tierBadge.textContent = name; tierBadge.style.display = 'inline-block'; }
-  else tierBadge.style.display = 'none';
+  const tierBadge = $('tierBadge');
+  tierBadge.textContent   = CLY.TIERS[state.tier] || '';
+  tierBadge.style.display = tierBadge.textContent ? 'inline-block' : 'none';
 
   if (state.fetchedAt) {
     const ago = Math.round((Date.now() - state.fetchedAt) / 1000);
-    document.getElementById('fetchedAt').textContent = ago < 5 ? 'just now' : `${ago}s ago`;
+    $('fetchedAt').textContent = ago < 5 ? 'just now' : `${ago}s ago`;
   }
 
-  renderPeakBanner(state.heatmap);
+  CLY.renderPeak($('peak-banner'), state.heatmap, 'visible');
   renderLimits(state.limits);
-  renderDailyStats(state.dailyUsage);
-  render7DayChart(state.dailyUsage);
+  renderDailyStats(currentDailyUsage);
+  render7DayChart(currentDailyUsage);
 
   if (isPro) {
-    document.getElementById('year-section').style.display = 'block';
-    renderYearHeatmap(state.dailyUsage);
-    renderBreakdown(state.dailyUsage);
-    document.getElementById('breakdown-section').style.display = 'block';
-    document.getElementById('export-section').style.display    = 'block';
+    renderYearHeatmap(currentDailyUsage);
+    renderBreakdown(currentDailyUsage);
   }
 }
 
@@ -586,12 +494,12 @@ const THEME_COLORS = { dark: '#1a1a1a', light: '#f9f9f8' };
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   document.documentElement.style.backgroundColor = THEME_COLORS[theme];
-  document.getElementById('themeBtn').textContent = theme === 'dark' ? '☀️' : '🌙';
+  $('themeBtn').textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
 chrome.storage.local.get(THEME_KEY, (r) => applyTheme(r[THEME_KEY] || 'dark'));
 
-document.getElementById('themeBtn').addEventListener('click', () => {
+$('themeBtn').addEventListener('click', () => {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   chrome.storage.local.set({ [THEME_KEY]: next });
@@ -602,17 +510,17 @@ document.getElementById('themeBtn').addEventListener('click', () => {
 
 // ── Refresh ───────────────────────────────────────────────────────────────
 
-document.getElementById('refreshBtn').addEventListener('click', () => {
-  document.getElementById('refreshBtn').style.opacity = '0.4';
+$('refreshBtn').addEventListener('click', () => {
+  $('refreshBtn').style.opacity = '0.4';
   chrome.runtime.sendMessage({ type: 'clautics_poll' }, (state) => {
     applyState(state);
-    document.getElementById('refreshBtn').style.opacity = '1';
+    $('refreshBtn').style.opacity = '1';
   });
 });
 
 // Tick countdowns every 20s
-setInterval(() => {
-  document.querySelectorAll('.lrow-reset[data-ts]').forEach(el => {
-    el.textContent = `↺ ${fmtCountdown(parseInt(el.dataset.ts))}`;
-  });
+CLY.interval(() => {
+  for (const el of document.querySelectorAll('.lrow-reset[data-ts]')) {
+    el.textContent = `↺ ${CLY.countdown(Number(el.dataset.ts))}`;
+  }
 }, 20_000);
