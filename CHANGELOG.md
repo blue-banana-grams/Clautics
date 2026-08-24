@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.4] - 2026-08-11
+
+### Fixed
+- The minimized panel's icon now actually shows the Clautics mark. The 1.1.3 fix for the CSP block (below) replaced the broken `<img>` with an inline SVG, but that SVG was a single rounded square rotated 45° — a solid gradient blob, not the logo. It's now built from the same two-diamond shape used everywhere else (the outlined diamond containing a smaller solid one, as in `icons/icon48.png` and the header's "◈" glyph), so the minimized square and the expanded panel finally show the same mark
+
 ## [1.1.3] - 2026-07-23
 
 ### Minimized panel — dragging fixed

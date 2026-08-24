@@ -45,15 +45,18 @@
       </div>
     </div>
     <button id="cly-mini-btn" title="Drag to move · click to expand">
-      <svg id="cly-mini-logo" viewBox="0 0 48 48" aria-label="Clautics" role="img">
+      <svg id="cly-mini-logo" viewBox="0 0 100 100" aria-label="Clautics" role="img">
         <defs>
           <linearGradient id="cly-mini-grad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stop-color="#e0a48c"/>
             <stop offset="1" stop-color="#cc785c"/>
           </linearGradient>
         </defs>
-        <rect x="9" y="9" width="30" height="30" rx="6" transform="rotate(45 24 24)"
-              fill="url(#cly-mini-grad)" stroke="#cc785c" stroke-width="3"/>
+        <!-- The actual mark (also used as the header's "◈" glyph and in
+             icons/icon48.png): an outlined diamond containing a smaller
+             solid one, not a single rotated square. -->
+        <polygon points="50,8 92,50 50,92 8,50" fill="none" stroke="#cc785c" stroke-width="5"/>
+        <polygon points="50,24 76,50 50,76 24,50" fill="url(#cly-mini-grad)"/>
       </svg>
       <span id="cly-mini-dot"></span>
     </button>
