@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.5] - 2026-09-10
+
+### Changed
+- The status dot on the minimized icon no longer shows at every usage level. It used to always be visible — even at low usage it read like a persistent notification badge glued to the corner of the diamond. It now stays hidden until a limit actually crosses 80%, matching the caution/warning thresholds used everywhere else in the panel
+
 ## [1.1.4] - 2026-08-11
 
 ### Fixed

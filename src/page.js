@@ -339,14 +339,20 @@
     renderMiniDot();
   }
 
-  // ── Mini dot (reflects the highest active limit while minimized) ───────
+  // ── Mini dot (warns on the minimized icon once usage is actually high) ──
+  // Hidden below 80% — showing it at every percentage made the minimized
+  // icon look like it permanently had a notification badge glued to it.
 
   function renderMiniDot() {
     let topPct = 0;
     for (const v of Object.values(currentLimits)) {
       if (v && typeof v.pct === 'number' && v.pct > topPct) topPct = v.pct;
     }
-    $('cly-mini-dot').style.backgroundColor = `var(--cly-${CLY.level(topPct)})`;
+    const level = CLY.level(topPct);
+    const show  = level !== 'accent';
+    const dot   = $('cly-mini-dot');
+    dot.classList.toggle('cly-dot-visible', show);
+    if (show) dot.style.backgroundColor = `var(--cly-${level})`;
   }
 
   // ── Footer ────────────────────────────────────────────────────────────

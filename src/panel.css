@@ -254,6 +254,7 @@
 }
 
 #cly-mini-dot {
+  display: none; /* shown only once usage crosses 80% — see renderMiniDot() */
   position: absolute;
   bottom: 2px; right: 2px;
   width: 9px; height: 9px;
@@ -262,3 +263,4 @@
   box-shadow: 0 0 0 2px var(--cly-bg3);
   pointer-events: none;
 }
+#cly-mini-dot.cly-dot-visible { display: block; }
