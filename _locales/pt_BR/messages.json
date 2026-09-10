@@ -1,0 +1,153 @@
+{
+  "extDescription": { "message": "Painel de uso do Claude em tempo real — limites de sessão, tetos semanais e rastreamento de mensagens." },
+
+  "labelSession":      { "message": "Sessão de 5h" },
+  "labelWeekly":        { "message": "Semanal" },
+  "labelSonnetWeekly":  { "message": "Semanal do Sonnet" },
+  "labelOpusWeekly":    { "message": "Semanal do Opus" },
+  "labelExtraUsage":    { "message": "Uso extra" },
+
+  "tierFree":   { "message": "Grátis" },
+  "tierPro":    { "message": "Pro" },
+  "tierTeam":   { "message": "Equipe" },
+  "tierMax5x":  { "message": "Max 5×" },
+  "tierMax20x": { "message": "Max 20×" },
+
+  "resetting": { "message": "reiniciando…" },
+  "countdownDaysHours": {
+    "message": "$DAYS$d $HOURS$h",
+    "placeholders": { "days": { "content": "$1" }, "hours": { "content": "$2" } }
+  },
+  "countdownHoursMinutes": {
+    "message": "$HOURS$h $MINUTES$m",
+    "placeholders": { "hours": { "content": "$1" }, "minutes": { "content": "$2" } }
+  },
+  "countdownMinutes": {
+    "message": "$MINUTES$m",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+
+  "peakHoursSlower":  { "message": "Horário de pico — o Claude pode ficar mais lento" },
+  "peakHoursTypical": { "message": "Horário de pico típico do Claude" },
+  "aboveUsualRate":   { "message": "Acima do seu ritmo de uso habitual" },
+
+  "justNow": { "message": "agora mesmo" },
+  "agoSeconds": {
+    "message": "há $SECONDS$ s",
+    "placeholders": { "seconds": { "content": "$1" } }
+  },
+
+  "severityWarning":  { "message": "Aviso" },
+  "severityCritical": { "message": "Crítico" },
+
+  "licenseErrInvalidFormat":  { "message": "Formato de chave de licença inválido." },
+  "licenseErrTooManyAttempts": {
+    "message": "Muitas tentativas — tente novamente em $MINUTES$ min",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+  "licenseErrActivationFailed": { "message": "Falha na ativação" },
+  "notifTitle": {
+    "message": "Clautics — $LIMIT$ em $THRESHOLD$%",
+    "placeholders": { "limit": { "content": "$1" }, "threshold": { "content": "$2" } }
+  },
+  "notifBody": {
+    "message": "$SEVERITY$: você usou $PCT$% do seu limite de $LIMIT$.",
+    "placeholders": { "severity": { "content": "$1" }, "pct": { "content": "$2" }, "limit": { "content": "$3" } }
+  },
+
+  "themeToggleTitle": { "message": "Alternar claro/escuro" },
+  "minimizeTitle":    { "message": "Minimizar" },
+  "miniBtnTitle":     { "message": "Arraste para mover · clique para expandir" },
+  "panelNoLimitsFound":   { "message": "Nenhum limite encontrado." },
+  "panelOpenConversation": { "message": "Abra uma conversa primeiro." },
+
+  "proBadgeLabel":  { "message": "PRO" },
+  "settingsTitle":  { "message": "Configurações" },
+  "refreshTitle":   { "message": "Atualizar" },
+
+  "sectionUsageLimits":      { "message": "Limites de uso" },
+  "loading":                 { "message": "Carregando…" },
+  "sectionDailyActivity":    { "message": "Atividade diária" },
+  "statToday":               { "message": "Hoje" },
+  "statStreak":              { "message": "Sequência" },
+  "statAvgPerDay":           { "message": "Média / dia" },
+  "sectionUsageThisWeek":    { "message": "Uso desta semana" },
+  "sectionActivityPastYear": { "message": "Atividade — Último ano" },
+  "sectionBreakdown":        { "message": "Detalhamento" },
+  "sectionExportData":       { "message": "Exportar dados" },
+
+  "upgradeBannerTitle": { "message": "Desbloqueie o Clautics Pro" },
+  "upgradeBannerSub": {
+    "message": "Histórico de um ano completo, exportação e mais — $PRICE$ pagamento único",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "footerMainHint":   { "message": "As estatísticas ficam dentro do claude.ai — abra-o para começar a rastrear." },
+  "footerOpenClaude": { "message": "Abrir Claude →" },
+
+  "settingsSectionLicense": { "message": "Licença" },
+  "proStatusFree":    { "message": "Plano gratuito" },
+  "proStatusSubFree": { "message": "Histórico de 7 dias · estatísticas básicas" },
+  "proStatusPro":     { "message": "Pro — desbloqueado" },
+  "proStatusSubPro":  { "message": "Histórico de um ano · exportação · todos os recursos" },
+  "licenseHaveKeyHint": { "message": "Tem uma chave de licença?" },
+  "activateBtn":        { "message": "Ativar" },
+  "activateBtnChecking": { "message": "Verificando…" },
+  "deactivateBtn":      { "message": "Remover licença" },
+  "licenseErrEmpty":    { "message": "Insira sua chave de licença." },
+  "licenseSuccessMsg":  { "message": "✓ Pro desbloqueado! Todos os recursos já estão ativos." },
+  "licenseErrGenericFallback": { "message": "Chave inválida — verifique o e-mail da Lemon Squeezy." },
+
+  "settingsSectionPanelSize": { "message": "Tamanho do painel na página" },
+  "panelSizeHint": { "message": "Define o tamanho padrão do painel flutuante no claude.ai. Arrastar as bordas dele é temporário — ele sempre volta a este tamanho ao reabrir." },
+  "panelSizeCompact": { "message": "Compacto" },
+  "panelSizeDefault": { "message": "Padrão" },
+  "panelSizeLarge":   { "message": "Grande" },
+
+  "settingsSectionAlerts": { "message": "Limites de alerta" },
+  "saveThresholds":        { "message": "Salvar limites" },
+  "thresholdsSaved":       { "message": "✓ Salvo" },
+
+  "buySectionTitle": {
+    "message": "Adquira o Pro — $PRICE$ pagamento único",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "proFeatureHeatmap":    { "message": "Mapa de calor de atividade anual" },
+  "proFeatureLifetime":   { "message": "Histórico vitalício — nunca reinicia" },
+  "proFeatureExport":     { "message": "Exporte dados em CSV ou JSON" },
+  "proFeatureThresholds": { "message": "Limites de alerta personalizados" },
+  "proFeatureBreakdowns": { "message": "Detalhamentos mensais e semanais" },
+  "buyBtnLabel": {
+    "message": "Adquira o Clautics Pro — $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "buySubtext":       { "message": "Pagamento único · Sem assinatura · Funciona para sempre" },
+  "footerSupportLink": { "message": "suporte" },
+
+  "popupNoDataYet":        { "message": "Ainda sem dados." },
+  "popupOpenClaudeFirst":  { "message": "Abra o claude.ai primeiro." },
+  "popupNoActiveLimits":   { "message": "Nenhum limite ativo encontrado." },
+
+  "msgCount": {
+    "message": "$COUNT$ msg",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "noMessages":       { "message": "sem mensagens" },
+  "unlockProTooltip": { "message": "Desbloqueie o Pro para o histórico completo" },
+  "showingLastDays": {
+    "message": "Mostrando os últimos $DAYS$ dias",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "unlockFullYear": { "message": "Desbloquear o ano completo →" },
+
+  "sameAsBefore": { "message": "igual ao anterior" },
+  "vsPrior": {
+    "message": "$DIFF$ em relação ao anterior",
+    "placeholders": { "diff": { "content": "$1" } }
+  },
+
+  "thisWeek":  { "message": "Esta Semana" },
+  "lastWeek":  { "message": "Semana Passada" },
+  "thisMonth": { "message": "Este Mês" },
+  "lastMonth": { "message": "Mês Passado" }
+}

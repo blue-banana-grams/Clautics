@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.6] - 2026-09-10
+
+### Added — 8-language support
+- Clautics now follows Chrome's own language setting and shows the popup and the on-page panel in English, Spanish, Portuguese (Brazil), French, German, Japanese, Simplified Chinese, or Korean — whichever the browser's UI language is, with English as the fallback
+- Uses Chrome's built-in `chrome.i18n` system (`_locales/<lang>/messages.json`), not a translation library — there's no framework to load and no runtime translation engine, so this adds zero JavaScript weight. Weekday and month abbreviations (7-day chart, year heatmap) come from `Intl.DateTimeFormat` instead of hand-written arrays, so they're correct in every locale Chrome supports, not just the 8 translated here, again at zero code size
+- The package grows by ~64KB total (8 language dictionaries, translated UI text only) plus ~7KB of code to wire it up — no minification was applied to keep this diffable; that's the actual, full cost of the feature, not inflated by any library
+
+### Fixed in the process
+- A notification's severity word ("Warning"/"Critical") is now decoupled from the internal state key used to track which alerts have already fired. Previously the same English word did both jobs — had it gone through translation as one thing, switching Chrome's language would have silently duplicated or dropped already-sent alerts. The storage key stays fixed in English; only the text shown to you is localized
+
 ## [1.1.5] - 2026-09-10
 
 ### Changed

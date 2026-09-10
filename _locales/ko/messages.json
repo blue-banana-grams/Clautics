@@ -1,0 +1,153 @@
+{
+  "extDescription": { "message": "실시간 Claude 사용량 대시보드 — 세션 한도, 주간 상한, 메시지 기록." },
+
+  "labelSession":      { "message": "5시간 세션" },
+  "labelWeekly":        { "message": "주간" },
+  "labelSonnetWeekly":  { "message": "Sonnet 주간" },
+  "labelOpusWeekly":    { "message": "Opus 주간" },
+  "labelExtraUsage":    { "message": "추가 사용량" },
+
+  "tierFree":   { "message": "무료" },
+  "tierPro":    { "message": "Pro" },
+  "tierTeam":   { "message": "팀" },
+  "tierMax5x":  { "message": "Max 5×" },
+  "tierMax20x": { "message": "Max 20×" },
+
+  "resetting": { "message": "재설정 중…" },
+  "countdownDaysHours": {
+    "message": "$DAYS$일 $HOURS$시간",
+    "placeholders": { "days": { "content": "$1" }, "hours": { "content": "$2" } }
+  },
+  "countdownHoursMinutes": {
+    "message": "$HOURS$시간 $MINUTES$분",
+    "placeholders": { "hours": { "content": "$1" }, "minutes": { "content": "$2" } }
+  },
+  "countdownMinutes": {
+    "message": "$MINUTES$분",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+
+  "peakHoursSlower":  { "message": "피크 시간대 — Claude 응답이 느려질 수 있습니다" },
+  "peakHoursTypical": { "message": "Claude의 일반적인 피크 시간대입니다" },
+  "aboveUsualRate":   { "message": "평소보다 사용 속도가 높습니다" },
+
+  "justNow": { "message": "방금 전" },
+  "agoSeconds": {
+    "message": "$SECONDS$초 전",
+    "placeholders": { "seconds": { "content": "$1" } }
+  },
+
+  "severityWarning":  { "message": "경고" },
+  "severityCritical": { "message": "심각" },
+
+  "licenseErrInvalidFormat":  { "message": "라이선스 키 형식이 올바르지 않습니다." },
+  "licenseErrTooManyAttempts": {
+    "message": "시도 횟수가 너무 많습니다 — $MINUTES$분 후 다시 시도하세요",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+  "licenseErrActivationFailed": { "message": "활성화에 실패했습니다" },
+  "notifTitle": {
+    "message": "Clautics — $LIMIT$이(가) $THRESHOLD$%에 도달",
+    "placeholders": { "limit": { "content": "$1" }, "threshold": { "content": "$2" } }
+  },
+  "notifBody": {
+    "message": "$SEVERITY$: $LIMIT$ 한도의 $PCT$%를 사용했습니다.",
+    "placeholders": { "severity": { "content": "$1" }, "pct": { "content": "$2" }, "limit": { "content": "$3" } }
+  },
+
+  "themeToggleTitle": { "message": "라이트/다크 전환" },
+  "minimizeTitle":    { "message": "최소화" },
+  "miniBtnTitle":     { "message": "드래그하여 이동 · 클릭하여 펼치기" },
+  "panelNoLimitsFound":   { "message": "제한 정보를 찾을 수 없습니다." },
+  "panelOpenConversation": { "message": "먼저 대화를 열어주세요." },
+
+  "proBadgeLabel":  { "message": "PRO" },
+  "settingsTitle":  { "message": "설정" },
+  "refreshTitle":   { "message": "새로고침" },
+
+  "sectionUsageLimits":      { "message": "사용 한도" },
+  "loading":                 { "message": "불러오는 중…" },
+  "sectionDailyActivity":    { "message": "일일 활동" },
+  "statToday":               { "message": "오늘" },
+  "statStreak":              { "message": "연속 기록" },
+  "statAvgPerDay":           { "message": "일 평균" },
+  "sectionUsageThisWeek":    { "message": "이번 주 사용량" },
+  "sectionActivityPastYear": { "message": "활동 — 지난 1년" },
+  "sectionBreakdown":        { "message": "세부 내역" },
+  "sectionExportData":       { "message": "데이터 내보내기" },
+
+  "upgradeBannerTitle": { "message": "Clautics Pro 잠금 해제" },
+  "upgradeBannerSub": {
+    "message": "1년 전체 기록, 내보내기 등 — 일회성 결제 $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "footerMainHint":   { "message": "통계는 claude.ai 안에서 표시됩니다 — 열어서 기록을 시작하세요." },
+  "footerOpenClaude": { "message": "Claude 열기 →" },
+
+  "settingsSectionLicense": { "message": "라이선스" },
+  "proStatusFree":    { "message": "무료 플랜" },
+  "proStatusSubFree": { "message": "7일 기록 · 기본 통계" },
+  "proStatusPro":     { "message": "Pro — 잠금 해제됨" },
+  "proStatusSubPro":  { "message": "1년 전체 기록 · 내보내기 · 모든 기능" },
+  "licenseHaveKeyHint": { "message": "라이선스 키가 있으신가요?" },
+  "activateBtn":        { "message": "활성화" },
+  "activateBtnChecking": { "message": "확인 중…" },
+  "deactivateBtn":      { "message": "라이선스 제거" },
+  "licenseErrEmpty":    { "message": "라이선스 키를 입력하세요." },
+  "licenseSuccessMsg":  { "message": "✓ Pro가 잠금 해제되었습니다! 모든 기능이 활성화되었습니다." },
+  "licenseErrGenericFallback": { "message": "잘못된 키입니다 — Lemon Squeezy에서 보낸 이메일을 확인하세요." },
+
+  "settingsSectionPanelSize": { "message": "페이지 내 패널 크기" },
+  "panelSizeHint": { "message": "claude.ai에 표시되는 플로팅 패널의 기본 크기를 설정합니다. 테두리를 드래그하는 것은 일시적이며, 다시 열면 항상 이 크기로 돌아갑니다." },
+  "panelSizeCompact": { "message": "컴팩트" },
+  "panelSizeDefault": { "message": "기본값" },
+  "panelSizeLarge":   { "message": "크게" },
+
+  "settingsSectionAlerts": { "message": "알림 기준값" },
+  "saveThresholds":        { "message": "기준값 저장" },
+  "thresholdsSaved":       { "message": "✓ 저장됨" },
+
+  "buySectionTitle": {
+    "message": "Pro 구매 — 일회성 $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "proFeatureHeatmap":    { "message": "1년 전체 활동 히트맵" },
+  "proFeatureLifetime":   { "message": "평생 기록 — 절대 초기화되지 않음" },
+  "proFeatureExport":     { "message": "CSV 또는 JSON으로 데이터 내보내기" },
+  "proFeatureThresholds": { "message": "사용자 지정 알림 기준값" },
+  "proFeatureBreakdowns": { "message": "월별 · 주별 세부 내역" },
+  "buyBtnLabel": {
+    "message": "Clautics Pro 구매 — $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "buySubtext":       { "message": "일회성 결제 · 구독 없음 · 영구 사용 가능" },
+  "footerSupportLink": { "message": "지원" },
+
+  "popupNoDataYet":        { "message": "아직 데이터가 없습니다." },
+  "popupOpenClaudeFirst":  { "message": "먼저 claude.ai를 열어주세요." },
+  "popupNoActiveLimits":   { "message": "활성화된 제한 정보를 찾을 수 없습니다." },
+
+  "msgCount": {
+    "message": "$COUNT$개 메시지",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "noMessages":       { "message": "메시지 없음" },
+  "unlockProTooltip": { "message": "전체 기록을 보려면 Pro를 잠금 해제하세요" },
+  "showingLastDays": {
+    "message": "최근 $DAYS$일 표시 중",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "unlockFullYear": { "message": "1년 전체 잠금 해제 →" },
+
+  "sameAsBefore": { "message": "이전과 동일" },
+  "vsPrior": {
+    "message": "이전 대비 $DIFF$",
+    "placeholders": { "diff": { "content": "$1" } }
+  },
+
+  "thisWeek":  { "message": "이번 주" },
+  "lastWeek":  { "message": "지난주" },
+  "thisMonth": { "message": "이번 달" },
+  "lastMonth": { "message": "지난달" }
+}

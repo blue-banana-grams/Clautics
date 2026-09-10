@@ -387,10 +387,10 @@
 <div class="hd">
   <span class="hd-logo">◈</span>
   <span class="hd-name">Clautics</span>
-  <span class="hd-pro-badge" id="proBadge">PRO</span>
-  <button class="hd-btn" id="themeBtn"   title="Toggle light/dark">☀️</button>
-  <button class="hd-btn" id="settingsBtn" title="Settings">⚙</button>
-  <button class="hd-btn" id="refreshBtn" title="Refresh" style="display:none">↻</button>
+  <span class="hd-pro-badge" id="proBadge" data-i18n="proBadgeLabel">PRO</span>
+  <button class="hd-btn" id="themeBtn"   data-i18n-title="themeToggleTitle" title="Toggle light/dark">☀️</button>
+  <button class="hd-btn" id="settingsBtn" data-i18n-title="settingsTitle" title="Settings">⚙</button>
+  <button class="hd-btn" id="refreshBtn" data-i18n-title="refreshTitle" title="Refresh" style="display:none">↻</button>
 </div>
 
 <!-- ── Main view ── -->
@@ -409,31 +409,31 @@
     </div>
 
     <!-- Limits -->
-    <div class="section-lbl">Usage Limits</div>
+    <div class="section-lbl" data-i18n="sectionUsageLimits">Usage Limits</div>
     <div class="limits" id="limits">
-      <div class="empty">Loading…</div>
+      <div class="empty" data-i18n="loading">Loading…</div>
     </div>
 
     <!-- Daily stats pills -->
-    <div class="section-lbl" style="margin-top:2px;">Daily Activity</div>
+    <div class="section-lbl" style="margin-top:2px;" data-i18n="sectionDailyActivity">Daily Activity</div>
     <div class="stats-row" id="stats-row">
       <div class="stat-pill">
         <span class="stat-pill-val" id="stat-today">—</span>
-        <span class="stat-pill-lbl">Today</span>
+        <span class="stat-pill-lbl" data-i18n="statToday">Today</span>
       </div>
       <div class="stat-pill">
         <span class="stat-pill-val" id="stat-streak">—</span>
-        <span class="stat-pill-lbl">Streak</span>
+        <span class="stat-pill-lbl" data-i18n="statStreak">Streak</span>
       </div>
       <div class="stat-pill">
         <span class="stat-pill-val" id="stat-avg">—</span>
-        <span class="stat-pill-lbl">Avg / day</span>
+        <span class="stat-pill-lbl" data-i18n="statAvgPerDay">Avg / day</span>
       </div>
     </div>
 
     <!-- 7-day bar chart (free + pro) -->
     <div id="seven-day-section">
-      <div class="section-lbl" style="margin-bottom:8px;">Usage This Week</div>
+      <div class="section-lbl" style="margin-bottom:8px;" data-i18n="sectionUsageThisWeek">Usage This Week</div>
       <div class="chart-wrap" id="seven-day-chart"></div>
     </div>
 
@@ -441,21 +441,21 @@
 
     <!-- Year heatmap — Pro only (hidden for free users) -->
     <div id="year-section" style="display:none">
-      <div class="section-lbl">Activity — Past Year</div>
+      <div class="section-lbl" data-i18n="sectionActivityPastYear">Activity — Past Year</div>
       <div id="daily-usage"></div>
     </div>
 
     <!-- Monthly & weekly breakdown — Pro only -->
     <div id="breakdown-section" style="display:none">
       <div class="divider"></div>
-      <div class="section-lbl">Breakdown</div>
+      <div class="section-lbl" data-i18n="sectionBreakdown">Breakdown</div>
       <div class="breakdown-grid" id="breakdown-grid"></div>
     </div>
 
-    <!-- Export — Pro only -->
+    <!-- Export — Pro only. CSV/JSON are file-format names, not translated. -->
     <div id="export-section" style="display:none">
       <div class="divider"></div>
-      <div class="section-lbl">Export Data</div>
+      <div class="section-lbl" data-i18n="sectionExportData">Export Data</div>
       <div class="export-btns">
         <button class="export-btn" id="exportCsvBtn">
           <span class="export-btn-icon">↓</span> CSV
@@ -466,12 +466,14 @@
       </div>
     </div>
 
-    <!-- Upgrade banner — free users -->
+    <!-- Upgrade banner — free users. Price is substituted via JS (popup.js),
+         not data-i18n, since chrome.i18n needs the $PRICE$ placeholder filled
+         in from one JS constant rather than baked into 8 translated files. -->
     <div id="upgrade-banner">
       <span class="upgrade-icon">◈</span>
       <div class="upgrade-text">
-        <strong>Unlock Clautics Pro</strong>
-        <span>Full year history, export &amp; more — $3.99 once</span>
+        <strong data-i18n="upgradeBannerTitle">Unlock Clautics Pro</strong>
+        <span id="upgradeBannerSub">Full year history, export &amp; more — $3.99 once</span>
       </div>
       <span class="upgrade-arrow">→</span>
     </div>
@@ -479,8 +481,8 @@
   </div>
 
   <div class="footer">
-    Stats live inside claude.ai — open it to start tracking.<br>
-    <a href="https://claude.ai" target="_blank">Open Claude →</a>
+    <span data-i18n="footerMainHint">Stats live inside claude.ai — open it to start tracking.</span><br>
+    <a href="https://claude.ai" target="_blank" data-i18n="footerOpenClaude">Open Claude →</a>
   </div>
 </div>
 
@@ -490,82 +492,83 @@
 
     <!-- License -->
     <div class="settings-section">
-      <div class="settings-title">License</div>
+      <div class="settings-title" data-i18n="settingsSectionLicense">License</div>
       <div class="settings-card" id="pro-status-card">
         <div class="pro-status-row">
           <span class="pro-status-icon" id="pro-status-icon">🔓</span>
           <div class="pro-status-text">
-            <strong id="pro-status-label">Free plan</strong>
-            <span id="pro-status-sub">7-day history · basic stats</span>
+            <strong id="pro-status-label" data-i18n="proStatusFree">Free plan</strong>
+            <span id="pro-status-sub" data-i18n="proStatusSubFree">7-day history · basic stats</span>
           </div>
         </div>
 
         <div id="license-activate-section" style="margin-top:9px;">
-          <div style="font-size:10px;color:var(--text5);margin-bottom:5px;">Have a license key?</div>
+          <div style="font-size:10px;color:var(--text5);margin-bottom:5px;" data-i18n="licenseHaveKeyHint">Have a license key?</div>
           <div class="license-input-wrap">
+            <!-- Placeholder is the key's literal character pattern, not natural language — left untranslated. -->
             <input class="license-input" id="licenseInput" type="text" placeholder="CLAU-XXXX-XXXX-XXXX" spellcheck="false" maxlength="200" autocomplete="off" />
-            <button class="activate-btn" id="activateBtn">Activate</button>
+            <button class="activate-btn" id="activateBtn" data-i18n="activateBtn">Activate</button>
           </div>
           <div class="license-msg" id="licenseMsg"></div>
         </div>
 
         <div id="license-deactivate-section" style="display:none;">
-          <button class="deactivate-btn" id="deactivateBtn">Remove license</button>
+          <button class="deactivate-btn" id="deactivateBtn" data-i18n="deactivateBtn">Remove license</button>
         </div>
       </div>
     </div>
 
     <!-- On-page panel size (default / reset size for the floating widget) -->
     <div class="settings-section">
-      <div class="settings-title">On-Page Panel Size</div>
+      <div class="settings-title" data-i18n="settingsSectionPanelSize">On-Page Panel Size</div>
       <div class="settings-card">
-        <div class="panel-size-hint">
+        <div class="panel-size-hint" data-i18n="panelSizeHint">
           Sets the default size of the floating panel on claude.ai. Dragging its edges there is temporary — it always resets to this size when reopened.
         </div>
         <div class="panel-size-options" id="panelSizeOptions">
-          <button type="button" data-size="compact">Compact</button>
-          <button type="button" data-size="default">Default</button>
-          <button type="button" data-size="large">Large</button>
+          <button type="button" data-size="compact" data-i18n="panelSizeCompact">Compact</button>
+          <button type="button" data-size="default" data-i18n="panelSizeDefault">Default</button>
+          <button type="button" data-size="large" data-i18n="panelSizeLarge">Large</button>
         </div>
       </div>
     </div>
 
     <!-- Custom alert thresholds — Pro only -->
     <div class="settings-section" id="custom-alerts-section" style="display:none;">
-      <div class="settings-title">Alert Thresholds</div>
+      <div class="settings-title" data-i18n="settingsSectionAlerts">Alert Thresholds</div>
       <div class="settings-card">
         <div class="threshold-row">
-          <span class="threshold-label">Warning</span>
+          <span class="threshold-label" data-i18n="severityWarning">Warning</span>
           <div class="threshold-right">
             <input class="threshold-input" id="threshWarn" type="number" min="1" max="99" value="80" />
             <span class="threshold-unit">%</span>
           </div>
         </div>
         <div class="threshold-row">
-          <span class="threshold-label">Critical</span>
+          <span class="threshold-label" data-i18n="severityCritical">Critical</span>
           <div class="threshold-right">
             <input class="threshold-input" id="threshCrit" type="number" min="1" max="100" value="95" />
             <span class="threshold-unit">%</span>
           </div>
         </div>
-        <button class="save-thresholds-btn" id="saveThresholdsBtn">Save thresholds</button>
+        <button class="save-thresholds-btn" id="saveThresholdsBtn" data-i18n="saveThresholds">Save thresholds</button>
       </div>
     </div>
 
-    <!-- Buy section — free users -->
+    <!-- Buy section — free users. Price substituted via JS, see upgrade banner note above. -->
     <div class="settings-section" id="buy-section">
-      <div class="settings-title">Get Pro — $3.99 one-time</div>
+      <div class="settings-title" id="buySectionTitle">Get Pro — $3.99 one-time</div>
       <div class="pro-features">
-        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Full year activity heatmap</div>
-        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Lifetime history — never resets</div>
-        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Export data as CSV or JSON</div>
-        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Custom alert thresholds</div>
-        <div class="pro-feature"><span class="pro-feature-icon">◈</span> Monthly &amp; weekly breakdowns</div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> <span data-i18n="proFeatureHeatmap">Full year activity heatmap</span></div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> <span data-i18n="proFeatureLifetime">Lifetime history — never resets</span></div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> <span data-i18n="proFeatureExport">Export data as CSV or JSON</span></div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> <span data-i18n="proFeatureThresholds">Custom alert thresholds</span></div>
+        <div class="pro-feature"><span class="pro-feature-icon">◈</span> <span data-i18n="proFeatureBreakdowns">Monthly &amp; weekly breakdowns</span></div>
       </div>
       <a class="buy-btn" id="buyBtn" href="https://clautics.org/pages/pricing.html" target="_blank">
-        ◈ &nbsp;Get Clautics Pro — $3.99
+        <span class="buy-btn-icon">◈</span><span id="buyBtnLabel">Get Clautics Pro — $3.99</span>
       </a>
-      <div style="font-size:9px;color:var(--text5);text-align:center;margin-top:6px;">
+      <div style="font-size:9px;color:var(--text5);text-align:center;margin-top:6px;" data-i18n="buySubtext">
         One-time payment · No subscription · Works forever
       </div>
     </div>
@@ -575,7 +578,7 @@
   <div class="footer">
     <a href="https://clautics.org" target="_blank">clautics.org</a>
     &nbsp;·&nbsp;
-    <a href="mailto:clauticsinfo@gmail.com">support</a>
+    <a href="mailto:clauticsinfo@gmail.com" data-i18n="footerSupportLink">support</a>
   </div>
 </div>
 

@@ -70,14 +70,14 @@ async function checkLicenseAttemptLimit() {
 // Squeezy rejection, network error) goes in `licenseError`.
 async function activateLicense(key) {
   if (typeof key !== 'string' || !key.trim() || key.length > 200) {
-    await chrome.storage.local.set({ isPro: false, licenseError: 'Invalid license key format' });
+    await chrome.storage.local.set({ isPro: false, licenseError: chrome.i18n.getMessage('licenseErrInvalidFormat') });
     return false;
   }
 
   const { blocked, retryAfterMs, attempts } = await checkLicenseAttemptLimit();
   if (blocked) {
     const minutes = Math.ceil(retryAfterMs / 60_000);
-    await chrome.storage.local.set({ isPro: false, licenseError: `Too many attempts — try again in ${minutes} min` });
+    await chrome.storage.local.set({ isPro: false, licenseError: chrome.i18n.getMessage('licenseErrTooManyAttempts', [String(minutes)]) });
     return false;
   }
 
@@ -105,7 +105,7 @@ async function activateLicense(key) {
       licenseInstanceId: instanceId,
       isPro:            valid,
       licenseCheckedAt: Date.now(),
-      licenseError:     valid ? null : (data?.error || 'Activation failed'),
+      licenseError:     valid ? null : (data?.error || chrome.i18n.getMessage('licenseErrActivationFailed')),
     });
     return valid;
   } catch (err) {
@@ -270,31 +270,38 @@ async function checkAlerts(limits, alertsSent) {
   const { alertWarnPct, alertCritPct } = await chrome.storage.local.get(['alertWarnPct', 'alertCritPct']);
   const warnPct = Number(alertWarnPct) || 80;
   const critPct = Number(alertCritPct) || 95;
+  // storageLabel is a stable, English, never-localized fragment of the
+  // alertsSent storage key (and matches the hardcoded 'Warning'/'Critical'
+  // in poll()'s reset logic below) — it must NOT change with the user's
+  // language, or switching languages would silently duplicate or drop
+  // already-sent alerts. `text` is the localized word actually shown in
+  // the notification.
   const thresholds = [
-    { pct: warnPct, label: 'Warning' },
-    { pct: critPct, label: 'Critical' },
+    { pct: warnPct, storageLabel: 'Warning',  text: chrome.i18n.getMessage('severityWarning') },
+    { pct: critPct, storageLabel: 'Critical', text: chrome.i18n.getMessage('severityCritical') },
   ];
 
   const updated = { ...(alertsSent || {}) };
 
   const tracked = [
-    { key: 'session',      val: limits.session?.pct,      name: '5-hr session' },
-    { key: 'weekly',       val: limits.weekly?.pct,       name: 'Weekly' },
-    { key: 'sonnetWeekly', val: limits.sonnetWeekly?.pct, name: 'Sonnet weekly' },
-    { key: 'opusWeekly',   val: limits.opusWeekly?.pct,   name: 'Opus weekly' },
+    { key: 'session',      val: limits.session?.pct },
+    { key: 'weekly',       val: limits.weekly?.pct },
+    { key: 'sonnetWeekly', val: limits.sonnetWeekly?.pct },
+    { key: 'opusWeekly',   val: limits.opusWeekly?.pct },
   ];
 
-  for (const { key, val, name } of tracked) {
+  for (const { key, val } of tracked) {
     if (val == null) continue;
-    for (const { pct: threshold, label: severity } of thresholds) {
+    const name = CLY.LABELS[key];
+    for (const { pct: threshold, storageLabel, text: severity } of thresholds) {
       // Use fixed 'warn'/'crit' keys so they survive threshold value changes
-      const alertKey = `${key}_${severity}`;
+      const alertKey = `${key}_${storageLabel}`;
       if (!updated[alertKey] && val >= threshold) {
         try {
-          await chrome.notifications.create(`clt_${key}_${severity}_${Date.now()}`, {
+          await chrome.notifications.create(`clt_${key}_${storageLabel}_${Date.now()}`, {
             type:     'basic',
-            title:    `Clautics — ${name} at ${threshold}%`,
-            message:  `${severity}: You've used ${val.toFixed(0)}% of your ${name} limit.`,
+            title:    chrome.i18n.getMessage('notifTitle', [name, String(threshold)]),
+            message:  chrome.i18n.getMessage('notifBody', [severity, val.toFixed(0), name]),
             iconUrl:  chrome.runtime.getURL('icons/icon48.png'),
           });
         } catch (err) {
@@ -415,7 +422,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   if (msg.type === 'clautics_activate') {
     if (typeof msg.key !== 'string' || msg.key.trim().length === 0 || msg.key.length > 200) {
-      reply({ valid: false, error: 'Invalid license key format.' });
+      reply({ valid: false, error: chrome.i18n.getMessage('licenseErrInvalidFormat') });
       return true;
     }
     activateLicense(msg.key.trim()).then(async (valid) => {

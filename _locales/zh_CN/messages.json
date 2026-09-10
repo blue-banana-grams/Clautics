@@ -1,0 +1,153 @@
+{
+  "extDescription": { "message": "实时 Claude 使用情况面板 — 会话限额、每周上限和消息记录。" },
+
+  "labelSession":      { "message": "5小时会话" },
+  "labelWeekly":        { "message": "每周" },
+  "labelSonnetWeekly":  { "message": "Sonnet 每周" },
+  "labelOpusWeekly":    { "message": "Opus 每周" },
+  "labelExtraUsage":    { "message": "额外用量" },
+
+  "tierFree":   { "message": "免费" },
+  "tierPro":    { "message": "Pro" },
+  "tierTeam":   { "message": "团队" },
+  "tierMax5x":  { "message": "Max 5×" },
+  "tierMax20x": { "message": "Max 20×" },
+
+  "resetting": { "message": "重置中…" },
+  "countdownDaysHours": {
+    "message": "$DAYS$天$HOURS$小时",
+    "placeholders": { "days": { "content": "$1" }, "hours": { "content": "$2" } }
+  },
+  "countdownHoursMinutes": {
+    "message": "$HOURS$小时$MINUTES$分钟",
+    "placeholders": { "hours": { "content": "$1" }, "minutes": { "content": "$2" } }
+  },
+  "countdownMinutes": {
+    "message": "$MINUTES$分钟",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+
+  "peakHoursSlower":  { "message": "高峰时段 — Claude 可能响应较慢" },
+  "peakHoursTypical": { "message": "Claude 的常规高峰时段" },
+  "aboveUsualRate":   { "message": "高于你平时的使用速度" },
+
+  "justNow": { "message": "刚刚" },
+  "agoSeconds": {
+    "message": "$SECONDS$ 秒前",
+    "placeholders": { "seconds": { "content": "$1" } }
+  },
+
+  "severityWarning":  { "message": "警告" },
+  "severityCritical": { "message": "严重" },
+
+  "licenseErrInvalidFormat":  { "message": "许可证密钥格式无效。" },
+  "licenseErrTooManyAttempts": {
+    "message": "尝试次数过多 — 请在 $MINUTES$ 分钟后重试",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+  "licenseErrActivationFailed": { "message": "激活失败" },
+  "notifTitle": {
+    "message": "Clautics — $LIMIT$ 已达 $THRESHOLD$%",
+    "placeholders": { "limit": { "content": "$1" }, "threshold": { "content": "$2" } }
+  },
+  "notifBody": {
+    "message": "$SEVERITY$：你已使用 $LIMIT$ 限额的 $PCT$%。",
+    "placeholders": { "severity": { "content": "$1" }, "pct": { "content": "$2" }, "limit": { "content": "$3" } }
+  },
+
+  "themeToggleTitle": { "message": "切换浅色/深色" },
+  "minimizeTitle":    { "message": "最小化" },
+  "miniBtnTitle":     { "message": "拖动以移动 · 点击以展开" },
+  "panelNoLimitsFound":   { "message": "未找到限额信息。" },
+  "panelOpenConversation": { "message": "请先打开一个对话。" },
+
+  "proBadgeLabel":  { "message": "PRO" },
+  "settingsTitle":  { "message": "设置" },
+  "refreshTitle":   { "message": "刷新" },
+
+  "sectionUsageLimits":      { "message": "使用限额" },
+  "loading":                 { "message": "加载中…" },
+  "sectionDailyActivity":    { "message": "每日活动" },
+  "statToday":               { "message": "今天" },
+  "statStreak":              { "message": "连续天数" },
+  "statAvgPerDay":           { "message": "日均" },
+  "sectionUsageThisWeek":    { "message": "本周使用情况" },
+  "sectionActivityPastYear": { "message": "活动 — 过去一年" },
+  "sectionBreakdown":        { "message": "细分" },
+  "sectionExportData":       { "message": "导出数据" },
+
+  "upgradeBannerTitle": { "message": "解锁 Clautics Pro" },
+  "upgradeBannerSub": {
+    "message": "全年历史记录、导出等更多功能 — 一次性 $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "footerMainHint":   { "message": "统计数据显示在 claude.ai 内 — 打开它即可开始记录。" },
+  "footerOpenClaude": { "message": "打开 Claude →" },
+
+  "settingsSectionLicense": { "message": "许可证" },
+  "proStatusFree":    { "message": "免费版" },
+  "proStatusSubFree": { "message": "7 天历史记录 · 基础统计" },
+  "proStatusPro":     { "message": "Pro — 已解锁" },
+  "proStatusSubPro":  { "message": "全年历史记录 · 导出 · 所有功能" },
+  "licenseHaveKeyHint": { "message": "已有许可证密钥？" },
+  "activateBtn":        { "message": "激活" },
+  "activateBtnChecking": { "message": "检查中…" },
+  "deactivateBtn":      { "message": "移除许可证" },
+  "licenseErrEmpty":    { "message": "请输入你的许可证密钥。" },
+  "licenseSuccessMsg":  { "message": "✓ Pro 已解锁！所有功能现已启用。" },
+  "licenseErrGenericFallback": { "message": "密钥无效 — 请查收 Lemon Squeezy 发送的邮件。" },
+
+  "settingsSectionPanelSize": { "message": "页面内面板大小" },
+  "panelSizeHint": { "message": "设置 claude.ai 上悬浮面板的默认大小。拖动边缘调整大小只是临时的 — 重新打开时会始终恢复为此大小。" },
+  "panelSizeCompact": { "message": "紧凑" },
+  "panelSizeDefault": { "message": "默认" },
+  "panelSizeLarge":   { "message": "大" },
+
+  "settingsSectionAlerts": { "message": "提醒阈值" },
+  "saveThresholds":        { "message": "保存阈值" },
+  "thresholdsSaved":       { "message": "✓ 已保存" },
+
+  "buySectionTitle": {
+    "message": "获取 Pro — 一次性 $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "proFeatureHeatmap":    { "message": "全年活动热力图" },
+  "proFeatureLifetime":   { "message": "永久历史记录 — 永不重置" },
+  "proFeatureExport":     { "message": "以 CSV 或 JSON 格式导出数据" },
+  "proFeatureThresholds": { "message": "自定义提醒阈值" },
+  "proFeatureBreakdowns": { "message": "按月和按周细分" },
+  "buyBtnLabel": {
+    "message": "获取 Clautics Pro — $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "buySubtext":       { "message": "一次性付款 · 无需订阅 · 永久有效" },
+  "footerSupportLink": { "message": "支持" },
+
+  "popupNoDataYet":        { "message": "暂无数据。" },
+  "popupOpenClaudeFirst":  { "message": "请先打开 claude.ai。" },
+  "popupNoActiveLimits":   { "message": "未找到有效的限额信息。" },
+
+  "msgCount": {
+    "message": "$COUNT$ 条消息",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "noMessages":       { "message": "无消息" },
+  "unlockProTooltip": { "message": "解锁 Pro 以查看完整历史记录" },
+  "showingLastDays": {
+    "message": "显示最近 $DAYS$ 天",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "unlockFullYear": { "message": "解锁全年记录 →" },
+
+  "sameAsBefore": { "message": "与之前相同" },
+  "vsPrior": {
+    "message": "较之前 $DIFF$",
+    "placeholders": { "diff": { "content": "$1" } }
+  },
+
+  "thisWeek":  { "message": "本周" },
+  "lastWeek":  { "message": "上周" },
+  "thisMonth": { "message": "本月" },
+  "lastMonth": { "message": "上月" }
+}

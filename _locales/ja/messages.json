@@ -1,0 +1,153 @@
+{
+  "extDescription": { "message": "リアルタイムのClaude利用状況ダッシュボード — セッション制限、週間上限、メッセージ数の記録。" },
+
+  "labelSession":      { "message": "5時間セッション" },
+  "labelWeekly":        { "message": "週間" },
+  "labelSonnetWeekly":  { "message": "Sonnet週間" },
+  "labelOpusWeekly":    { "message": "Opus週間" },
+  "labelExtraUsage":    { "message": "追加利用" },
+
+  "tierFree":   { "message": "無料" },
+  "tierPro":    { "message": "Pro" },
+  "tierTeam":   { "message": "Team" },
+  "tierMax5x":  { "message": "Max 5×" },
+  "tierMax20x": { "message": "Max 20×" },
+
+  "resetting": { "message": "リセット中…" },
+  "countdownDaysHours": {
+    "message": "$DAYS$日$HOURS$時間",
+    "placeholders": { "days": { "content": "$1" }, "hours": { "content": "$2" } }
+  },
+  "countdownHoursMinutes": {
+    "message": "$HOURS$時間$MINUTES$分",
+    "placeholders": { "hours": { "content": "$1" }, "minutes": { "content": "$2" } }
+  },
+  "countdownMinutes": {
+    "message": "$MINUTES$分",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+
+  "peakHoursSlower":  { "message": "ピーク時間帯 — Claudeの応答が遅くなる可能性があります" },
+  "peakHoursTypical": { "message": "Claudeの通常のピーク時間帯です" },
+  "aboveUsualRate":   { "message": "通常より利用ペースが高くなっています" },
+
+  "justNow": { "message": "たった今" },
+  "agoSeconds": {
+    "message": "$SECONDS$秒前",
+    "placeholders": { "seconds": { "content": "$1" } }
+  },
+
+  "severityWarning":  { "message": "警告" },
+  "severityCritical": { "message": "重大" },
+
+  "licenseErrInvalidFormat":  { "message": "ライセンスキーの形式が無効です。" },
+  "licenseErrTooManyAttempts": {
+    "message": "試行回数が多すぎます — $MINUTES$分後に再試行してください",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+  "licenseErrActivationFailed": { "message": "アクティベーションに失敗しました" },
+  "notifTitle": {
+    "message": "Clautics — $LIMIT$が$THRESHOLD$%に到達",
+    "placeholders": { "limit": { "content": "$1" }, "threshold": { "content": "$2" } }
+  },
+  "notifBody": {
+    "message": "$SEVERITY$: $LIMIT$の制限の$PCT$%を使用しました。",
+    "placeholders": { "severity": { "content": "$1" }, "pct": { "content": "$2" }, "limit": { "content": "$3" } }
+  },
+
+  "themeToggleTitle": { "message": "ライト/ダーク切り替え" },
+  "minimizeTitle":    { "message": "最小化" },
+  "miniBtnTitle":     { "message": "ドラッグで移動 · クリックで展開" },
+  "panelNoLimitsFound":   { "message": "制限情報が見つかりません。" },
+  "panelOpenConversation": { "message": "先に会話を開いてください。" },
+
+  "proBadgeLabel":  { "message": "PRO" },
+  "settingsTitle":  { "message": "設定" },
+  "refreshTitle":   { "message": "更新" },
+
+  "sectionUsageLimits":      { "message": "利用制限" },
+  "loading":                 { "message": "読み込み中…" },
+  "sectionDailyActivity":    { "message": "日々のアクティビティ" },
+  "statToday":               { "message": "今日" },
+  "statStreak":              { "message": "連続日数" },
+  "statAvgPerDay":           { "message": "平均／日" },
+  "sectionUsageThisWeek":    { "message": "今週の利用状況" },
+  "sectionActivityPastYear": { "message": "アクティビティ — 過去1年間" },
+  "sectionBreakdown":        { "message": "内訳" },
+  "sectionExportData":       { "message": "データをエクスポート" },
+
+  "upgradeBannerTitle": { "message": "Clautics Proを解除" },
+  "upgradeBannerSub": {
+    "message": "1年分の履歴、エクスポートなど — 一度きり$PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "footerMainHint":   { "message": "統計はclaude.ai内に表示されます — 開いてトラッキングを開始してください。" },
+  "footerOpenClaude": { "message": "Claudeを開く →" },
+
+  "settingsSectionLicense": { "message": "ライセンス" },
+  "proStatusFree":    { "message": "無料プラン" },
+  "proStatusSubFree": { "message": "7日間の履歴 · 基本統計" },
+  "proStatusPro":     { "message": "Pro — 解除済み" },
+  "proStatusSubPro":  { "message": "1年分の履歴 · エクスポート · すべての機能" },
+  "licenseHaveKeyHint": { "message": "ライセンスキーをお持ちですか？" },
+  "activateBtn":        { "message": "アクティベート" },
+  "activateBtnChecking": { "message": "確認中…" },
+  "deactivateBtn":      { "message": "ライセンスを削除" },
+  "licenseErrEmpty":    { "message": "ライセンスキーを入力してください。" },
+  "licenseSuccessMsg":  { "message": "✓ Proが解除されました！すべての機能が有効になりました。" },
+  "licenseErrGenericFallback": { "message": "キーが無効です — Lemon Squeezyからのメールをご確認ください。" },
+
+  "settingsSectionPanelSize": { "message": "ページ内パネルのサイズ" },
+  "panelSizeHint": { "message": "claude.ai上に表示するフローティングパネルの既定サイズを設定します。端をドラッグして変更しても一時的なもので、再度開くと常にこのサイズに戻ります。" },
+  "panelSizeCompact": { "message": "コンパクト" },
+  "panelSizeDefault": { "message": "既定" },
+  "panelSizeLarge":   { "message": "大" },
+
+  "settingsSectionAlerts": { "message": "アラートしきい値" },
+  "saveThresholds":        { "message": "しきい値を保存" },
+  "thresholdsSaved":       { "message": "✓ 保存しました" },
+
+  "buySectionTitle": {
+    "message": "Proを購入 — 一度きり$PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "proFeatureHeatmap":    { "message": "1年分のアクティビティヒートマップ" },
+  "proFeatureLifetime":   { "message": "永久履歴 — リセットされません" },
+  "proFeatureExport":     { "message": "CSVまたはJSONでデータをエクスポート" },
+  "proFeatureThresholds": { "message": "カスタムアラートしきい値" },
+  "proFeatureBreakdowns": { "message": "月次・週次の内訳" },
+  "buyBtnLabel": {
+    "message": "Clautics Proを購入 — $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "buySubtext":       { "message": "一度きりの支払い · サブスクリプションなし · 永久に利用可能" },
+  "footerSupportLink": { "message": "サポート" },
+
+  "popupNoDataYet":        { "message": "まだデータがありません。" },
+  "popupOpenClaudeFirst":  { "message": "先にclaude.aiを開いてください。" },
+  "popupNoActiveLimits":   { "message": "有効な制限情報が見つかりません。" },
+
+  "msgCount": {
+    "message": "$COUNT$件",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "noMessages":       { "message": "メッセージなし" },
+  "unlockProTooltip": { "message": "全履歴を見るにはProを解除してください" },
+  "showingLastDays": {
+    "message": "直近$DAYS$日間を表示中",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "unlockFullYear": { "message": "1年分を解除 →" },
+
+  "sameAsBefore": { "message": "前回と同じ" },
+  "vsPrior": {
+    "message": "前回比 $DIFF$",
+    "placeholders": { "diff": { "content": "$1" } }
+  },
+
+  "thisWeek":  { "message": "今週" },
+  "lastWeek":  { "message": "先週" },
+  "thisMonth": { "message": "今月" },
+  "lastMonth": { "message": "先月" }
+}

@@ -5,9 +5,19 @@
 // and the peak-hours heuristic all live in common.js — loaded just above this
 // file — because the on-page panel needs exactly the same logic.
 
-const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PRICE      = '$3.99'; // one real USD price, substituted into i18n strings — not translated per-locale
 const FREE_DAYS  = 7;
+
+// Chrome.i18n's messages.json covers fixed UI strings, but weekday/month
+// abbreviations need real locale-aware formatting (pluralization, script,
+// ordering) that hand-translated arrays can't give correctly across many
+// languages — Intl.DateTimeFormat does this natively, for every locale
+// Chrome supports, at zero code size.
+const LOCALE     = chrome.i18n.getUILanguage();
+const DAY_FMT    = new Intl.DateTimeFormat(LOCALE, { weekday: 'short' });
+const MONTH_FMT  = new Intl.DateTimeFormat(LOCALE, { month: 'short' });
+const dayShort   = (date) => DAY_FMT.format(date);
+const monthShort = (date) => MONTH_FMT.format(date);
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -15,6 +25,23 @@ const $ = (id) => document.getElementById(id);
 
 // Lighter shade the bar fades in from, per severity.
 const GRADIENT_FROM = { warn: '#f07a70', caution: '#e8b870', accent: '#e09878' };
+
+// ── i18n ──────────────────────────────────────────────────────────────────
+// Runs first, before anything else touches the DOM, so there's no flash of
+// English before the real language paints. Plain [data-i18n]/-title/
+// -placeholder elements are filled generically here; the three strings that
+// need $PRICE$ substituted are handled explicitly right after, since a
+// generic pass can't pass per-element arguments to chrome.i18n.getMessage().
+
+for (const el of document.querySelectorAll('[data-i18n]')) {
+  el.textContent = chrome.i18n.getMessage(el.dataset.i18n);
+}
+for (const el of document.querySelectorAll('[data-i18n-title]')) {
+  el.title = chrome.i18n.getMessage(el.dataset.i18nTitle);
+}
+document.getElementById('upgradeBannerSub').textContent = chrome.i18n.getMessage('upgradeBannerSub', [PRICE]);
+document.getElementById('buySectionTitle').textContent  = chrome.i18n.getMessage('buySectionTitle', [PRICE]);
+document.getElementById('buyBtnLabel').textContent       = chrome.i18n.getMessage('buyBtnLabel', [PRICE]);
 
 // ── Pro state ─────────────────────────────────────────────────────────────
 
@@ -39,10 +66,8 @@ function applyProUI() {
   $('license-activate-section').style.display   = isPro ? 'none' : 'block';
   $('license-deactivate-section').style.display = isPro ? 'block' : 'none';
   $('pro-status-icon').textContent  = isPro ? '✅' : '🔓';
-  $('pro-status-label').textContent = isPro ? 'Pro — unlocked' : 'Free plan';
-  $('pro-status-sub').textContent   = isPro
-    ? 'Full year history · export · all features'
-    : '7-day history · basic stats';
+  $('pro-status-label').textContent = chrome.i18n.getMessage(isPro ? 'proStatusPro' : 'proStatusFree');
+  $('pro-status-sub').textContent   = chrome.i18n.getMessage(isPro ? 'proStatusSubPro' : 'proStatusSubFree');
 
   // Re-render with the correct gating
   renderYearHeatmap(currentDailyUsage);
@@ -79,22 +104,22 @@ function showLicenseMsg(text, type) {
 
 activateBtn.addEventListener('click', async () => {
   const key = licenseInput.value.trim();
-  if (!key) { showLicenseMsg('Please enter your license key.', 'fail'); return; }
+  if (!key) { showLicenseMsg(chrome.i18n.getMessage('licenseErrEmpty'), 'fail'); return; }
   activateBtn.disabled    = true;
-  activateBtn.textContent = 'Checking…';
+  activateBtn.textContent = chrome.i18n.getMessage('activateBtnChecking');
   licenseInput.className  = 'license-input';
   licenseMsg.className    = 'license-msg';
   chrome.runtime.sendMessage({ type: 'clautics_activate', key }, ({ valid, error }) => {
     activateBtn.disabled    = false;
-    activateBtn.textContent = 'Activate';
+    activateBtn.textContent = chrome.i18n.getMessage('activateBtn');
     if (valid) {
       isPro = true;
       licenseInput.className = 'license-input valid';
-      showLicenseMsg('✓ Pro unlocked! All features are now active.', 'success');
+      showLicenseMsg(chrome.i18n.getMessage('licenseSuccessMsg'), 'success');
       applyProUI();
     } else {
       licenseInput.className = 'license-input error';
-      showLicenseMsg(error || 'Invalid key — check your email from Lemon Squeezy.', 'fail');
+      showLicenseMsg(error || chrome.i18n.getMessage('licenseErrGenericFallback'), 'fail');
     }
   });
 });
@@ -124,10 +149,10 @@ saveThresholdsBtn.addEventListener('click', () => {
   const warn = Math.min(99,  Math.max(1, parseInt($('threshWarn').value) || 80));
   const crit = Math.min(100, Math.max(1, parseInt($('threshCrit').value) || 95));
   chrome.storage.local.set({ alertWarnPct: warn, alertCritPct: crit, alertsSent: {} }, () => {
-    saveThresholdsBtn.textContent = '✓ Saved';
+    saveThresholdsBtn.textContent = chrome.i18n.getMessage('thresholdsSaved');
     saveThresholdsBtn.classList.add('saved');
     setTimeout(() => {
-      saveThresholdsBtn.textContent = 'Save thresholds';
+      saveThresholdsBtn.textContent = chrome.i18n.getMessage('saveThresholds');
       saveThresholdsBtn.classList.remove('saved');
     }, 2000);
   });
@@ -162,11 +187,23 @@ document.querySelectorAll('#panelSizeOptions button').forEach((btn) => {
 
 function renderLimits(limits) {
   const container = $('limits');
-  if (!limits) { container.innerHTML = '<div class="empty">No data yet.<br>Open claude.ai first.</div>'; return; }
+  if (!limits) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.append(chrome.i18n.getMessage('popupNoDataYet'), document.createElement('br'), chrome.i18n.getMessage('popupOpenClaudeFirst'));
+    container.replaceChildren(empty);
+    return;
+  }
 
   // CLY.ORDER is already the display order, so selecting by it sorts for free.
   const entries = CLY.ORDER.map((key) => [key, limits[key]]).filter(([, v]) => v != null);
-  if (!entries.length) { container.innerHTML = '<div class="empty">No active limits found.</div>'; return; }
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = chrome.i18n.getMessage('popupNoActiveLimits');
+    container.replaceChildren(empty);
+    return;
+  }
 
   const frag = document.createDocumentFragment();
   for (const [key, limit] of entries) {
@@ -255,16 +292,16 @@ function render7DayChart(dailyUsage) {
   const days = [];
   for (let i = 0; i < 7; i++) {
     const key = CLY.dateKey(cur);
-    days.push({ key, dow: cur.getDay(), val: du[key] || 0, isToday: i === 6 });
+    days.push({ key, date: new Date(cur), val: du[key] || 0, isToday: i === 6 });
     cur.setDate(cur.getDate() + 1);
   }
   const maxVal = Math.max(...days.map(d => d.val), 1);
 
   const frag = document.createDocumentFragment();
-  for (const { key, dow, val, isToday } of days) {
+  for (const { key, date, val, isToday } of days) {
     const col = document.createElement('div');
     col.className = 'chart-col';
-    col.title = `${key}: ${val > 0 ? val + ' msg' : 'no messages'}`;
+    col.title = `${key}: ${val > 0 ? chrome.i18n.getMessage('msgCount', [String(val)]) : chrome.i18n.getMessage('noMessages')}`;
 
     const wrap = document.createElement('div');
     wrap.className = 'chart-bar-wrap';
@@ -276,7 +313,7 @@ function render7DayChart(dailyUsage) {
 
     const dayLbl = document.createElement('div');
     dayLbl.className   = 'chart-day-lbl';
-    dayLbl.textContent = isToday ? 'Today' : DAYS_SHORT[dow];
+    dayLbl.textContent = isToday ? chrome.i18n.getMessage('statToday') : dayShort(date);
 
     const countLbl = document.createElement('div');
     countLbl.className   = `chart-count-lbl${val === 0 ? ' zero' : ''}`;
@@ -330,13 +367,18 @@ function renderYearHeatmap(dailyUsage) {
       const isFuture = cur > today;
       if (!isFuture && cur.getDate() <= 7 && !seenMonths.has(cur.getMonth())) {
         seenMonths.add(cur.getMonth());
-        monthLabels[w] = MONTHS[cur.getMonth()];
+        monthLabels[w] = monthShort(cur);
       }
       const locked = !isPro && cur < freeCutoff;
       const key = CLY.dateKey(cur);
       const val = isFuture ? null : (du[key] || 0);
       const bg  = isFuture ? 'transparent' : cellColor(val, locked);
-      const tip = isFuture ? '' : locked ? 'Unlock Pro for full history' : `${key}: ${val ? val + ' msg' : 'no messages'}`;
+      const tip = isFuture ? '' : locked ? chrome.i18n.getMessage('unlockProTooltip')
+        : `${key}: ${val ? chrome.i18n.getMessage('msgCount', [String(val)]) : chrome.i18n.getMessage('noMessages')}`;
+      // tip/monthLabels are chrome.i18n output plus digits/colons this code
+      // controls — never third-party text — so interpolating them into this
+      // HTML-string grid (built once per render, thousands of cells) is safe
+      // without a per-cell escaping pass.
       cells.push(`<div style="background:${bg};border-radius:1px;${locked ? 'opacity:0.25;' : ''}" title="${tip}"></div>`);
       cur.setDate(cur.getDate() + 1);
     }
@@ -355,7 +397,7 @@ function renderYearHeatmap(dailyUsage) {
   // Lock overlay for free users
   const lockOverlay = isPro ? '' : `
     <div style="margin-top:5px;font-size:10px;color:var(--text5);text-align:center;line-height:1.5;">
-      Showing last ${FREE_DAYS} days · <span style="color:var(--accent);cursor:pointer;" id="unlock-link">Unlock full year →</span>
+      ${chrome.i18n.getMessage('showingLastDays', [String(FREE_DAYS)])} · <span style="color:var(--accent);cursor:pointer;" id="unlock-link">${chrome.i18n.getMessage('unlockFullYear')}</span>
     </div>`;
 
   container.innerHTML = monthRow + grid + lockOverlay;
@@ -407,17 +449,17 @@ function renderBreakdown(dailyUsage) {
   function deltaLabel(curr, prev) {
     if (!prev) return '';
     const diff = curr - prev;
-    if (diff === 0) return '<span class="breakdown-delta">same as before</span>';
+    if (diff === 0) return `<span class="breakdown-delta">${chrome.i18n.getMessage('sameAsBefore')}</span>`;
     const sign = diff > 0 ? '+' : '';
     const cls  = diff > 0 ? 'up' : 'down';
-    return `<span class="breakdown-delta ${cls}">${sign}${diff} vs prior</span>`;
+    return `<span class="breakdown-delta ${cls}">${chrome.i18n.getMessage('vsPrior', [`${sign}${diff}`])}</span>`;
   }
 
   const cards = [
-    { label: 'This Week',  val: thisWeek,  delta: deltaLabel(thisWeek, lastWeek) },
-    { label: 'Last Week',  val: lastWeek,  delta: '' },
-    { label: 'This Month', val: thisMonth, delta: deltaLabel(thisMonth, lastMonth) },
-    { label: 'Last Month', val: lastMonth, delta: '' },
+    { label: chrome.i18n.getMessage('thisWeek'),  val: thisWeek,  delta: deltaLabel(thisWeek, lastWeek) },
+    { label: chrome.i18n.getMessage('lastWeek'),  val: lastWeek,  delta: '' },
+    { label: chrome.i18n.getMessage('thisMonth'), val: thisMonth, delta: deltaLabel(thisMonth, lastMonth) },
+    { label: chrome.i18n.getMessage('lastMonth'), val: lastMonth, delta: '' },
   ];
 
   container.innerHTML = cards.map(c => `
@@ -466,7 +508,7 @@ function applyState(state) {
 
   if (state.fetchedAt) {
     const ago = Math.round((Date.now() - state.fetchedAt) / 1000);
-    $('fetchedAt').textContent = ago < 5 ? 'just now' : `${ago}s ago`;
+    $('fetchedAt').textContent = ago < 5 ? chrome.i18n.getMessage('justNow') : chrome.i18n.getMessage('agoSeconds', [String(ago)]);
   }
 
   CLY.renderPeak($('peak-banner'), state.heatmap, 'visible');

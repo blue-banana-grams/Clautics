@@ -1,0 +1,153 @@
+{
+  "extDescription": { "message": "Real-time Claude usage dashboard — session limits, weekly caps, and message tracking." },
+
+  "labelSession":      { "message": "5-hr session" },
+  "labelWeekly":        { "message": "Weekly" },
+  "labelSonnetWeekly":  { "message": "Sonnet weekly" },
+  "labelOpusWeekly":    { "message": "Opus weekly" },
+  "labelExtraUsage":    { "message": "Extra usage" },
+
+  "tierFree":   { "message": "Free" },
+  "tierPro":    { "message": "Pro" },
+  "tierTeam":   { "message": "Team" },
+  "tierMax5x":  { "message": "Max 5×" },
+  "tierMax20x": { "message": "Max 20×" },
+
+  "resetting": { "message": "resetting…" },
+  "countdownDaysHours": {
+    "message": "$DAYS$d $HOURS$h",
+    "placeholders": { "days": { "content": "$1" }, "hours": { "content": "$2" } }
+  },
+  "countdownHoursMinutes": {
+    "message": "$HOURS$h $MINUTES$m",
+    "placeholders": { "hours": { "content": "$1" }, "minutes": { "content": "$2" } }
+  },
+  "countdownMinutes": {
+    "message": "$MINUTES$m",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+
+  "peakHoursSlower":  { "message": "Peak hours — Claude may be slower" },
+  "peakHoursTypical": { "message": "Typical peak hours for Claude" },
+  "aboveUsualRate":   { "message": "Above your usual usage rate" },
+
+  "justNow": { "message": "just now" },
+  "agoSeconds": {
+    "message": "$SECONDS$s ago",
+    "placeholders": { "seconds": { "content": "$1" } }
+  },
+
+  "severityWarning":  { "message": "Warning" },
+  "severityCritical": { "message": "Critical" },
+
+  "licenseErrInvalidFormat":  { "message": "Invalid license key format." },
+  "licenseErrTooManyAttempts": {
+    "message": "Too many attempts — try again in $MINUTES$ min",
+    "placeholders": { "minutes": { "content": "$1" } }
+  },
+  "licenseErrActivationFailed": { "message": "Activation failed" },
+  "notifTitle": {
+    "message": "Clautics — $LIMIT$ at $THRESHOLD$%",
+    "placeholders": { "limit": { "content": "$1" }, "threshold": { "content": "$2" } }
+  },
+  "notifBody": {
+    "message": "$SEVERITY$: You've used $PCT$% of your $LIMIT$ limit.",
+    "placeholders": { "severity": { "content": "$1" }, "pct": { "content": "$2" }, "limit": { "content": "$3" } }
+  },
+
+  "themeToggleTitle": { "message": "Toggle light/dark" },
+  "minimizeTitle":    { "message": "Minimize" },
+  "miniBtnTitle":     { "message": "Drag to move · click to expand" },
+  "panelNoLimitsFound":   { "message": "No limits found." },
+  "panelOpenConversation": { "message": "Open a conversation first." },
+
+  "proBadgeLabel":  { "message": "PRO" },
+  "settingsTitle":  { "message": "Settings" },
+  "refreshTitle":   { "message": "Refresh" },
+
+  "sectionUsageLimits":      { "message": "Usage Limits" },
+  "loading":                 { "message": "Loading…" },
+  "sectionDailyActivity":    { "message": "Daily Activity" },
+  "statToday":               { "message": "Today" },
+  "statStreak":              { "message": "Streak" },
+  "statAvgPerDay":           { "message": "Avg / day" },
+  "sectionUsageThisWeek":    { "message": "Usage This Week" },
+  "sectionActivityPastYear": { "message": "Activity — Past Year" },
+  "sectionBreakdown":        { "message": "Breakdown" },
+  "sectionExportData":       { "message": "Export Data" },
+
+  "upgradeBannerTitle": { "message": "Unlock Clautics Pro" },
+  "upgradeBannerSub": {
+    "message": "Full year history, export & more — $PRICE$ once",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "footerMainHint":   { "message": "Stats live inside claude.ai — open it to start tracking." },
+  "footerOpenClaude": { "message": "Open Claude →" },
+
+  "settingsSectionLicense": { "message": "License" },
+  "proStatusFree":    { "message": "Free plan" },
+  "proStatusSubFree": { "message": "7-day history · basic stats" },
+  "proStatusPro":     { "message": "Pro — unlocked" },
+  "proStatusSubPro":  { "message": "Full year history · export · all features" },
+  "licenseHaveKeyHint": { "message": "Have a license key?" },
+  "activateBtn":        { "message": "Activate" },
+  "activateBtnChecking": { "message": "Checking…" },
+  "deactivateBtn":      { "message": "Remove license" },
+  "licenseErrEmpty":    { "message": "Please enter your license key." },
+  "licenseSuccessMsg":  { "message": "✓ Pro unlocked! All features are now active." },
+  "licenseErrGenericFallback": { "message": "Invalid key — check your email from Lemon Squeezy." },
+
+  "settingsSectionPanelSize": { "message": "On-Page Panel Size" },
+  "panelSizeHint": { "message": "Sets the default size of the floating panel on claude.ai. Dragging its edges there is temporary — it always resets to this size when reopened." },
+  "panelSizeCompact": { "message": "Compact" },
+  "panelSizeDefault": { "message": "Default" },
+  "panelSizeLarge":   { "message": "Large" },
+
+  "settingsSectionAlerts": { "message": "Alert Thresholds" },
+  "saveThresholds":        { "message": "Save thresholds" },
+  "thresholdsSaved":       { "message": "✓ Saved" },
+
+  "buySectionTitle": {
+    "message": "Get Pro — $PRICE$ one-time",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "proFeatureHeatmap":    { "message": "Full year activity heatmap" },
+  "proFeatureLifetime":   { "message": "Lifetime history — never resets" },
+  "proFeatureExport":     { "message": "Export data as CSV or JSON" },
+  "proFeatureThresholds": { "message": "Custom alert thresholds" },
+  "proFeatureBreakdowns": { "message": "Monthly & weekly breakdowns" },
+  "buyBtnLabel": {
+    "message": "Get Clautics Pro — $PRICE$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "buySubtext":       { "message": "One-time payment · No subscription · Works forever" },
+  "footerSupportLink": { "message": "support" },
+
+  "popupNoDataYet":        { "message": "No data yet." },
+  "popupOpenClaudeFirst":  { "message": "Open claude.ai first." },
+  "popupNoActiveLimits":   { "message": "No active limits found." },
+
+  "msgCount": {
+    "message": "$COUNT$ msg",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "noMessages":       { "message": "no messages" },
+  "unlockProTooltip": { "message": "Unlock Pro for full history" },
+  "showingLastDays": {
+    "message": "Showing last $DAYS$ days",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "unlockFullYear": { "message": "Unlock full year →" },
+
+  "sameAsBefore": { "message": "same as before" },
+  "vsPrior": {
+    "message": "$DIFF$ vs prior",
+    "placeholders": { "diff": { "content": "$1" } }
+  },
+
+  "thisWeek":  { "message": "This Week" },
+  "lastWeek":  { "message": "Last Week" },
+  "thisMonth": { "message": "This Month" },
+  "lastMonth": { "message": "Last Month" }
+}

@@ -30,8 +30,8 @@
     <div id="cly-header">
       <span id="cly-logo">◈</span>
       <span id="cly-name">Clautics</span>
-      <button class="cly-hd-btn" id="cly-theme"    title="Toggle light/dark">☀️</button>
-      <button class="cly-hd-btn" id="cly-collapse" title="Minimize">−</button>
+      <button class="cly-hd-btn" id="cly-theme"    title="${CLY.attr(chrome.i18n.getMessage('themeToggleTitle'))}">☀️</button>
+      <button class="cly-hd-btn" id="cly-collapse" title="${CLY.attr(chrome.i18n.getMessage('minimizeTitle'))}">−</button>
     </div>
     <div id="cly-body">
       <div id="cly-limits"></div>
@@ -44,7 +44,7 @@
         <span id="cly-updated"></span>
       </div>
     </div>
-    <button id="cly-mini-btn" title="Drag to move · click to expand">
+    <button id="cly-mini-btn" title="${CLY.attr(chrome.i18n.getMessage('miniBtnTitle'))}">
       <svg id="cly-mini-logo" viewBox="0 0 100 100" aria-label="Clautics" role="img">
         <defs>
           <linearGradient id="cly-mini-grad" x1="0" y1="0" x2="1" y2="1">
@@ -296,7 +296,16 @@
       .filter(([, v]) => v != null);
 
     if (!entries.length) {
-      container.innerHTML = '<div class="cly-empty">No limits found.<br>Open a conversation first.</div>';
+      // Built as DOM nodes rather than an innerHTML string — chrome.i18n text
+      // is appended as text nodes this way, so it can never be parsed as markup.
+      const empty = document.createElement('div');
+      empty.className = 'cly-empty';
+      empty.append(
+        chrome.i18n.getMessage('panelNoLimitsFound'),
+        document.createElement('br'),
+        chrome.i18n.getMessage('panelOpenConversation')
+      );
+      container.replaceChildren(empty);
       renderMiniDot();
       return;
     }
@@ -363,7 +372,9 @@
     tierEl.style.display = tierEl.textContent ? 'inline-block' : 'none';
     if (state.fetchedAt) {
       const ago = Math.round((Date.now() - state.fetchedAt) / 1000);
-      $('cly-updated').textContent = ago < 10 ? 'just now' : `${ago}s ago`;
+      $('cly-updated').textContent = ago < 10
+        ? chrome.i18n.getMessage('justNow')
+        : chrome.i18n.getMessage('agoSeconds', [String(ago)]);
     }
   }
 
