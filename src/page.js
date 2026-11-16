@@ -34,6 +34,10 @@
       <button class="cly-hd-btn" id="cly-collapse" title="${CLY.attr(chrome.i18n.getMessage('minimizeTitle'))}">−</button>
     </div>
     <div id="cly-body">
+      <div id="cly-coach" class="cly-coach-good">
+        <div class="cly-coach-title"><span class="cly-coach-i"></span><span class="cly-coach-t"></span></div>
+        <div class="cly-coach-d"></div>
+      </div>
       <div id="cly-limits"></div>
       <div id="cly-peak-banner">
         <span class="cly-pk-i">⚠️</span>
@@ -287,13 +291,12 @@
   // ── Render limits ─────────────────────────────────────────────────────
 
   let currentLimits = {};
+  let coach = null;
 
   function renderLimits(limits) {
     currentLimits = limits || {};
     const container = $('cly-limits');
-    const entries = CLY.ORDER
-      .map((key) => [key, currentLimits[key]])
-      .filter(([, v]) => v != null);
+    const entries = CLY.ordered(currentLimits);
 
     if (!entries.length) {
       // Built as DOM nodes rather than an innerHTML string — chrome.i18n text
@@ -320,7 +323,7 @@
       const row = document.createElement('div'); row.className = 'cly-limit-row';
       const top = document.createElement('div'); top.className = 'cly-limit-top';
       const label = document.createElement('span'); label.className = 'cly-limit-label';
-      label.textContent = CLY.LABELS[key] || key;
+      label.textContent = CLY.label(key);
       const pctEl = document.createElement('span'); pctEl.className = 'cly-limit-pct';
       pctEl.style.color = color; pctEl.textContent = `${pct.toFixed(0)}%`;
       top.append(label, pctEl);
@@ -329,10 +332,19 @@
       const fill  = document.createElement('div'); fill.className = 'cly-fill';
       fill.style.width = `${Math.min(pct, 100)}%`; fill.style.background = color;
       track.appendChild(fill);
+      // Even-pace marker: where usage would be if spread evenly over this
+      // window. Fill past the marker = burning faster than the window allows.
+      const pacePct = coach?.pace?.[key]?.pacePct;
+      if (pacePct != null) {
+        const tick = document.createElement('div'); tick.className = 'cly-pace-tick';
+        tick.style.left = `${Math.min(pacePct, 100)}%`;
+        tick.title = chrome.i18n.getMessage('paceTickTitle');
+        track.appendChild(tick);
+      }
 
       const meta = document.createElement('div'); meta.className = 'cly-limit-meta';
       if (key === 'extraUsage' && limit.usedCents != null) {
-        meta.textContent = `$${(limit.usedCents / 100).toFixed(2)} / $${(limit.limitCents / 100).toFixed(2)}`;
+        meta.textContent = CLY.money(limit.usedCents, limit.limitCents);
       } else if (limit.resetsAt) {
         const resetLabel = document.createElement('span');
         resetLabel.className = 'cly-reset-label';
@@ -341,7 +353,14 @@
         meta.appendChild(resetLabel);
       }
 
-      row.append(top, track, meta);
+      // Extra usage with no monthly cap has no percentage to show: put the
+      // amount spent where the % would be, and drop the bar.
+      if (key === 'extraUsage' && limit.usedCents != null && limit.limitCents == null) {
+        pctEl.textContent = meta.textContent;
+        row.append(top);
+      } else {
+        row.append(top, track, meta);
+      }
       frag.appendChild(row);
     }
     container.replaceChildren(frag);
@@ -382,9 +401,24 @@
 
   let lastState = null;
 
+  // ── Coach line ────────────────────────────────────────────────────────
+
+  function renderCoach() {
+    const box = $('cly-coach');
+    const h = coach?.headline;
+    box.style.display = h ? '' : 'none';
+    if (!h) return;
+    box.className = `cly-coach-${h.level}`;
+    box.querySelector('.cly-coach-i').textContent = h.icon;
+    box.querySelector('.cly-coach-t').textContent = h.title;
+    box.querySelector('.cly-coach-d').textContent = h.detail;
+  }
+
   function applyState(state) {
     if (!state) return;
     lastState = state;
+    coach = COACH.analyze(state);
+    renderCoach();
     if (state.limits) renderLimits(state.limits);
     CLY.renderPeak(peakEl, state.heatmap, 'cly-peak-visible');
     renderFooter(state);
@@ -395,10 +429,8 @@
   CLY.interval(() => {
     // Nothing here is visible while minimized, so don't touch the DOM at all.
     if (mini) return;
-    for (const el of root.querySelectorAll('[data-ts]')) {
-      el.textContent = `↺ ${CLY.countdown(Number(el.dataset.ts))}`;
-    }
-    if (lastState) renderFooter(lastState);
+    // Re-runs the coach as well as the countdowns: its ETAs are time-based.
+    if (lastState) applyState(lastState);
   }, 20_000);
 
   // ── Theme ─────────────────────────────────────────────────────────────
@@ -424,7 +456,19 @@
 
   chrome.runtime.sendMessage({ type: 'clautics_get' }, applyState);
 
-  chrome.runtime.onMessage.addListener((msg) => {
+  // Fallback the worker uses when its own request to claude.ai fails: the
+  // same request made from the page's origin always carries the session.
+  // Only claude.ai API paths, only GET, only from this extension.
+  const API_PATH = /^\/api\/[\w\-/?=&.]+$/;
+
+  chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+    if (msg.type === 'clautics_fetch') {
+      if (sender.id !== chrome.runtime.id || typeof msg.path !== 'string' || !API_PATH.test(msg.path)) return false;
+      fetch(msg.path, { credentials: 'include', headers: { 'Accept': 'application/json' } })
+        .then(async (res) => reply(res.ok ? { ok: true, data: await res.json() } : { ok: false, status: res.status }))
+        .catch(() => reply({ ok: false, status: 0 }));
+      return true;
+    }
     if (msg.type === 'clautics_theme')  applyPanelTheme(msg.theme);
     if (msg.type === 'clautics_update') applyState(msg.data);
     if (msg.type === 'clautics_panel_size' && PANEL_WIDTHS[msg.size]) {

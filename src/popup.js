@@ -195,8 +195,7 @@ function renderLimits(limits) {
     return;
   }
 
-  // CLY.ORDER is already the display order, so selecting by it sorts for free.
-  const entries = CLY.ORDER.map((key) => [key, limits[key]]).filter(([, v]) => v != null);
+  const entries = CLY.ordered(limits);
   if (!entries.length) {
     const empty = document.createElement('div');
     empty.className = 'empty';
@@ -206,6 +205,7 @@ function renderLimits(limits) {
   }
 
   const frag = document.createDocumentFragment();
+  let hasTick = false;
   for (const [key, limit] of entries) {
     const pct   = limit.pct ?? 0;
     const level = CLY.level(pct);
@@ -220,7 +220,7 @@ function renderLimits(limits) {
     dot.style.backgroundColor = color;
 
     const label = document.createElement('span'); label.className = 'lrow-label';
-    label.append(dot, CLY.LABELS[key] || key);
+    label.append(dot, CLY.label(key));
 
     const pctEl = document.createElement('span'); pctEl.className = 'lrow-pct';
     pctEl.style.color = color;
@@ -232,7 +232,7 @@ function renderLimits(limits) {
 
     const resetEl = document.createElement('span'); resetEl.className = 'lrow-reset';
     if (key === 'extraUsage' && limit.usedCents != null) {
-      resetEl.textContent = `$${(limit.usedCents / 100).toFixed(2)} / $${(limit.limitCents / 100).toFixed(2)}`;
+      resetEl.textContent = CLY.money(limit.usedCents, limit.limitCents);
     } else if (limit.resetsAt) {
       resetEl.dataset.ts  = limit.resetsAt;
       resetEl.textContent = `↺ ${CLY.countdown(limit.resetsAt)}`;
@@ -247,11 +247,76 @@ function renderLimits(limits) {
     fill.style.width = `${Math.min(pct, 100)}%`;
     track.appendChild(fill);
 
+    const pacePct = coach?.pace?.[key]?.pacePct;
+    if (pacePct != null) {
+      const tick = document.createElement('div'); tick.className = 'pace-tick';
+      tick.style.left = `${Math.min(pacePct, 100)}%`;
+      tick.title = chrome.i18n.getMessage('paceTickTitle');
+      track.appendChild(tick);
+      hasTick = true;
+    }
+
+    // Extra usage with no monthly cap has no percentage to show: put the
+    // amount spent where the % would be, and drop the bar.
+    if (key === 'extraUsage' && limit.usedCents != null && limit.limitCents == null) {
+      pctEl.textContent = resetEl.textContent;
+      row.append(top);
+      frag.appendChild(row);
+      continue;
+    }
+
     row.append(top, track);
     if (resetEl.textContent) row.appendChild(resetEl);
     frag.appendChild(row);
   }
   container.replaceChildren(frag);
+  $('paceLegend').style.display = hasTick ? 'flex' : 'none';
+}
+
+// ── Coach ─────────────────────────────────────────────────────────────────
+
+let coach = null;
+
+function renderCoach() {
+  const h = coach?.headline;
+  const box = $('coach');
+  box.style.display = h ? 'block' : 'none';
+  if (h) {
+    box.className = `coach ${h.level}`;
+    $('coachIcon').textContent   = h.icon;
+    $('coachTitle').textContent  = h.title;
+    $('coachDetail').textContent = h.detail;
+  }
+
+  // Budget pills — each only when there's something real to show.
+  const ml = coach?.messagesLeft;
+  const b  = coach?.budget;
+  $('pill-msgs').style.display  = ml ? '' : 'none';
+  $('pill-budget').style.display = b ? '' : 'none';
+  $('pill-today').style.display  = b && b.usedToday != null ? '' : 'none';
+  if (ml) $('stat-msgs-left').textContent = `≈${ml.n}`;
+  if (b) {
+    $('stat-daily-budget').textContent = `${b.perDay >= 10 ? Math.round(b.perDay) : b.perDay.toFixed(1)}%`;
+    if (b.usedToday != null) {
+      $('stat-used-today').textContent = `${Math.round(b.usedToday)}%`;
+      $('stat-used-today').style.color = b.usedToday > b.perDay * 1.15 ? 'var(--caution)' : '';
+    }
+  }
+  const shown = [ml, b].filter(Boolean).length + (b && b.usedToday != null ? 1 : 0);
+  $('budget-row').style.gridTemplateColumns = `repeat(${Math.max(shown, 1)}, 1fr)`;
+  $('budget-section').style.display = shown ? 'block' : 'none';
+
+  const tips = document.createDocumentFragment();
+  for (const tip of coach?.tips || []) {
+    const el = document.createElement('div');
+    el.className = 'tip';
+    el.textContent = tip.text;
+    tips.appendChild(el);
+  }
+  $('tips').replaceChildren(tips);
+
+  $('strategy').style.display = coach?.strategy ? 'block' : 'none';
+  $('strategy').textContent = coach?.strategy || '';
 }
 
 // ── Daily stats pills ─────────────────────────────────────────────────────
@@ -497,8 +562,13 @@ $('exportJsonBtn').addEventListener('click', () => {
 
 // ── State ─────────────────────────────────────────────────────────────────
 
+let lastState = null;
+
 function applyState(state) {
   if (!state) return;
+  lastState = state;
+  coach = COACH.analyze(state);
+  renderCoach();
 
   currentDailyUsage = state.dailyUsage || {};
 
@@ -560,9 +630,17 @@ $('refreshBtn').addEventListener('click', () => {
   });
 });
 
-// Tick countdowns every 20s
+// Tick countdowns and re-run the coach (its ETAs are time-based) every 20s
 CLY.interval(() => {
-  for (const el of document.querySelectorAll('.lrow-reset[data-ts]')) {
-    el.textContent = `↺ ${CLY.countdown(Number(el.dataset.ts))}`;
-  }
+  if (!lastState) return;
+  coach = COACH.analyze(lastState);
+  renderCoach();
+  renderLimits(lastState.limits);
 }, 20_000);
+
+// ── Pace alerts toggle ────────────────────────────────────────────────────
+
+chrome.storage.local.get('paceAlerts', (r) => { $('paceAlertsToggle').checked = r.paceAlerts !== false; });
+$('paceAlertsToggle').addEventListener('change', (e) => {
+  chrome.storage.local.set({ paceAlerts: e.target.checked });
+});

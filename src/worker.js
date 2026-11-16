@@ -1,11 +1,11 @@
 // Clautics — src/worker.js
 'use strict';
 
-importScripts('/src/common.js');
+importScripts('/src/common.js', '/src/coach.js');
 
 const HEATMAP_HOURS = 24 * 7;
 const STORAGE_KEY   = 'clautics_v1';
-const CONTENT_JS    = ['src/common.js', 'src/page.js'];
+const CONTENT_JS    = ['src/common.js', 'src/coach.js', 'src/page.js'];
 const CONTENT_CSS   = ['src/panel.css'];
 
 // ── Storage ────────────────────────────────────────────────────────────────
@@ -29,6 +29,12 @@ function defaultState() {
     lastPercent: {},
     alertsSent:  {},
     fetchedAt:   null,
+    // Coach inputs — see recordSamples() and attributeCosts().
+    samples:     {},
+    msgCosts:    [],
+    convCost:    {},
+    pending:     [],
+    lastConv:    null,
   };
 }
 
@@ -152,72 +158,127 @@ async function validateLicense() {
   }
 }
 
-// ── Org ID ─────────────────────────────────────────────────────────────────
+// ── Serialized state updates ───────────────────────────────────────────────
+// The completion listener and the poll both read-modify-write the same state
+// object. Running them through one queue means neither can overwrite what the
+// other just wrote (the old code re-loaded mid-poll and hoped for the best).
 
-async function getOrgId() {
-  try {
-    const tabs = await chrome.tabs.query({ url: '*://claude.ai/*' });
-    if (!tabs.length) return null;
-    const cookie = await chrome.cookies.get({ url: 'https://claude.ai', name: 'lastActiveOrg' });
-    return cookie?.value || null;
-  } catch { return null; }
+let updateQueue = Promise.resolve();
+
+function update(fn) {
+  const run = updateQueue.then(async () => {
+    const next = await fn(await load());
+    if (next) await save(next);
+    return next;
+  });
+  updateQueue = run.catch(() => {});
+  return run;
 }
 
-// ── Fetch Claude API ───────────────────────────────────────────────────────
+// ── Talking to claude.ai ───────────────────────────────────────────────────
+// The worker fetches claude.ai directly first. If that fails (a claude.ai
+// tab's cookies/bot checks are the reliable path), it asks the content script
+// in an open claude.ai tab to make the same request from the page's own
+// origin, which always carries the user's session.
 
-async function fetchUsage(orgId) {
-  if (!orgId) return null;
+async function claudeTabs() {
+  try { return await chrome.tabs.query({ url: '*://claude.ai/*' }); } catch { return []; }
+}
+
+async function fetchJson(path) {
   try {
-    const res = await fetch(`https://claude.ai/api/organizations/${orgId}/usage`, {
+    const res = await fetch(`https://claude.ai${path}`, {
       credentials: 'include', headers: { 'Accept': 'application/json' },
     });
-    if (!res.ok) return null;
-    return res.json();
-  } catch { return null; }
+    if (res.ok) return { ok: true, data: await res.json() };
+    if (res.status === 401 || res.status === 403 || res.status === 404) {
+      // Could be a stale org or a worker-side block — let a tab try too.
+      const viaTab = await fetchViaTab(path);
+      return viaTab || { ok: false, status: res.status };
+    }
+  } catch {}
+  return (await fetchViaTab(path)) || { ok: false, status: 0 };
+}
+
+async function fetchViaTab(path) {
+  for (const tab of await claudeTabs()) {
+    try {
+      const res = await chrome.tabs.sendMessage(tab.id, { type: 'clautics_fetch', path });
+      if (res?.ok) return res;
+    } catch {}
+  }
+  return null;
+}
+
+// The org the user is currently in. Read from the cookie on every poll rather
+// than cached forever — switching accounts or orgs used to leave the extension
+// polling the old org (and failing) until it was reinstalled.
+async function getOrgId(fallback) {
+  try {
+    const cookie = await chrome.cookies.get({ url: 'https://claude.ai', name: 'lastActiveOrg' });
+    if (cookie?.value) return cookie.value;
+  } catch {}
+  return fallback || null;
 }
 
 async function fetchTier(orgId) {
-  if (!orgId) return 'unknown';
-  try {
-    const res = await fetch(
-      `https://claude.ai/api/bootstrap/${orgId}/app_start?statsig_hashing_algorithm=djb2`,
-      { credentials: 'include', headers: { 'Accept': 'application/json' } }
-    );
-    if (!res.ok) return 'unknown';
-    const data = await res.json();
-    const memberships = data?.account?.memberships || [];
-    const org  = memberships.find(m => m.organization?.uuid === orgId)?.organization;
-    if (!org) return 'unknown';
-    const caps   = org.capabilities || [];
-    const raven  = !!org.raven_type;
-    const rlTier = org.rate_limit_tier || '';
-    if (raven)                       return 'team';
-    if (caps.includes('claude_max')) return rlTier.includes('5x') ? 'max_5x' : 'max_20x';
-    if (caps.includes('claude_pro')) return 'pro';
-    return 'free';
-  } catch { return 'unknown'; }
+  const res = await fetchJson(`/api/bootstrap/${orgId}/app_start?statsig_hashing_algorithm=djb2`);
+  if (!res.ok) return null;
+  const memberships = res.data?.account?.memberships || [];
+  const org = memberships.find((m) => m.organization?.uuid === orgId)?.organization;
+  if (!org) return null;
+  const caps = org.capabilities || [];
+  const rl   = String(org.rate_limit_tier || '').toLowerCase();
+  if (org.raven_type) return 'team';
+  // Max 20× was renamed Ultra (10× Pro weekly, no 5-hour limit once verified).
+  if (caps.includes('claude_ultra') || rl.includes('ultra') || rl.includes('20x')) return 'ultra';
+  if (caps.includes('claude_max')) return 'max_5x';
+  if (caps.includes('claude_pro')) return 'pro';
+  return 'free';
 }
 
 // ── Parse limits ───────────────────────────────────────────────────────────
+// five_hour → session, seven_day → weekly, and every per-model weekly bucket
+// (seven_day_opus, seven_day_sonnet, seven_day_fable, and whatever model gets
+// its own bucket next) → <model>Weekly, so a new bucket shows up without a
+// code change.
 
 function parseLimits(raw) {
   const parseOne = (obj) => {
-    if (!obj) return null;
-    return { pct: obj.utilization ?? 0, resetsAt: new Date(obj.resets_at).getTime() };
+    if (!obj || typeof obj !== 'object') return null;
+    const pct = Number(obj.utilization);
+    const resetsAt = obj.resets_at ? Date.parse(obj.resets_at) : NaN;
+    return {
+      pct: Number.isFinite(pct) ? pct : 0,
+      // A session that hasn't started has no reset time; this used to become
+      // new Date(null) = 1970 and show "resetting…" forever.
+      resetsAt: Number.isFinite(resetsAt) ? resetsAt : null,
+    };
   };
-  const extra = raw.extra_usage?.is_enabled ? {
-    pct:        raw.extra_usage.used_credits / raw.extra_usage.monthly_limit * 100,
-    usedCents:  raw.extra_usage.used_credits,
-    limitCents: raw.extra_usage.monthly_limit,
-    resetsAt:   null,
-  } : null;
-  return {
-    session:      parseOne(raw.five_hour),
-    weekly:       parseOne(raw.seven_day),
-    sonnetWeekly: parseOne(raw.seven_day_sonnet),
-    opusWeekly:   parseOne(raw.seven_day_opus),
-    extraUsage:   extra,
-  };
+
+  const limits = { session: parseOne(raw.five_hour), weekly: parseOne(raw.seven_day) };
+  for (const [k, v] of Object.entries(raw || {})) {
+    const m = /^seven_day_([a-z]+)$/.exec(k);   // skips e.g. seven_day_oauth_apps
+    if (!m) continue;
+    const p = parseOne(v);
+    if (p) limits[`${m[1]}Weekly`] = p;
+  }
+
+  const ex = raw.extra_usage;
+  if (ex?.is_enabled) {
+    const used  = Number(ex.used_credits) || 0;
+    const limit = Number(ex.monthly_limit);
+    const capped = Number.isFinite(limit) && limit > 0;
+    limits.extraUsage = {
+      pct:        capped ? (used / limit) * 100 : 0,
+      usedCents:  used,
+      limitCents: capped ? limit : null,   // null = no monthly cap set
+      resetsAt:   null,
+    };
+  }
+
+  for (const k of Object.keys(limits)) if (!limits[k]) delete limits[k];
+  return limits;
 }
 
 // ── Heatmap ────────────────────────────────────────────────────────────────
@@ -229,7 +290,7 @@ function currentEpochHour() {
 function updateHeatmap(heatmap, delta) {
   if (delta <= 0) return heatmap;
   const hour     = currentEpochHour();
-  const copy     = [...heatmap];
+  const copy     = [...(heatmap || [])];
   const existing = copy.find(h => h.hour === hour);
   if (existing) existing.delta += delta;
   else copy.push({ hour, delta });
@@ -241,8 +302,7 @@ function updateHeatmap(heatmap, delta) {
 
 // Drops entries older than 400 days. Keys are ISO-ish yyyy-mm-dd, so a string
 // compare against the cutoff key is the same as a date compare.
-// Runs at most once a day rather than on every single completion, where it was
-// re-scanning (and rebuilding) the whole map for nothing.
+// Runs at most once a day rather than on every single completion.
 let lastPruneKey = null;
 
 function pruneDailyUsage(du, todayKey) {
@@ -256,59 +316,155 @@ function pruneDailyUsage(du, todayKey) {
   return copy;
 }
 
+// ── Usage history (feeds the coach) ────────────────────────────────────────
+// samples[key] = [[time, pct, resetsAt], ...] — a reading whenever the
+// percentage moves, plus a heartbeat every 10 minutes so "how fast over the
+// last hour" always has a starting point. Eight days covers a full weekly
+// window.
+
+const SAMPLE_KEEP_MS    = 8 * 24 * 3_600_000;
+const SAMPLE_HEARTBEAT  = 10 * 60_000;
+const SAMPLE_MAX        = 1500;
+
+function recordSamples(samples, limits, now) {
+  const out = {};
+  for (const [key, arr] of Object.entries(samples || {})) {
+    out[key] = arr.filter((s) => now - s[0] <= SAMPLE_KEEP_MS);
+  }
+  for (const [key, lim] of Object.entries(limits)) {
+    if (key === 'extraUsage' || !lim.resetsAt) continue;
+    const arr = out[key] || (out[key] = []);
+    const last = arr[arr.length - 1];
+    if (!last || last[1] !== lim.pct || !COACH.sameWindow(last[2], lim.resetsAt) || now - last[0] >= SAMPLE_HEARTBEAT) {
+      arr.push([now, lim.pct, lim.resetsAt]);
+    }
+    if (arr.length > SAMPLE_MAX) arr.splice(0, arr.length - SAMPLE_MAX);
+  }
+  return out;
+}
+
+// ── Cost per message ───────────────────────────────────────────────────────
+// Every completion is queued in `pending`. When the next usage reading comes
+// in, the change in the primary limit (the 5-hour session, or weekly when the
+// plan has no session limit) is split evenly across the queued messages and
+// credited to their conversations. That's how the coach knows ~how many
+// messages are left and which chat has become expensive.
+//
+// Usage can lag the completion by a few seconds, so a message whose reading
+// hasn't moved yet stays queued for up to 90s before being counted as ~0.
+
+const PENDING_GRACE_MS = 90_000;
+const MSG_COSTS_MAX    = 200;
+const CONV_KEEP        = 50;
+
+function attributeCosts(next, prev, now) {
+  const pending = next.pending || [];
+  if (!pending.length) return;
+  const key = COACH.primaryKey(next.limits);
+  const cur = key && next.limits[key];
+  const before = prev.limits?.[key];
+
+  // First reading ever, or nothing to measure against: drop the queue rather
+  // than credit the whole existing percentage to the last message.
+  if (!cur || !prev.limits) { next.pending = []; return; }
+
+  let base;
+  if (!before || !before.resetsAt || before.resetsAt <= now) base = 0;         // a new window started
+  else if (COACH.sameWindow(before.resetsAt, cur.resetsAt)) base = before.pct;
+  else { next.pending = []; return; }                                             // window jumped — unreliable
+
+  const delta = cur.pct - base;
+  if (delta < 0) { next.pending = []; return; }
+  if (delta === 0 && pending.some((p) => now - p.t < PENDING_GRACE_MS)) return; // wait for the reading to catch up
+
+  const per = delta / pending.length;
+  const costs = [...(next.msgCosts || [])];
+  const convs = { ...(next.convCost || {}) };
+  for (const p of pending) {
+    costs.push([p.t, per, p.conv]);
+    const c = convs[p.conv] || { n: 0, pct: 0, measured: 0, last: p.t };
+    convs[p.conv] = { ...c, pct: c.pct + per, measured: c.measured + 1 };
+  }
+  next.msgCosts = costs.slice(-MSG_COSTS_MAX);
+  next.convCost = pruneConvs(convs);
+  next.pending  = [];
+}
+
+function pruneConvs(convs) {
+  const ids = Object.keys(convs);
+  if (ids.length <= CONV_KEEP) return convs;
+  ids.sort((a, b) => convs[b].last - convs[a].last);
+  const out = {};
+  for (const id of ids.slice(0, CONV_KEEP)) out[id] = convs[id];
+  return out;
+}
+
 // ── Smart alerts ──────────────────────────────────────────────────────────
-// Only fires for Pro users. Uses custom thresholds saved by the popup's
-// settings page, falling back to 80 % (warning) and 95 % (critical).
+// Threshold alerts are Pro-only and use custom thresholds saved by the
+// popup's settings page, falling back to 80 % (warning) and 95 % (critical).
+// Pace alerts ("you'll run out in 40m") are free, on by default, and fire
+// once per window.
 
-async function checkAlerts(limits, alertsSent) {
-  // Gate on Pro
-  const { isPro } = await chrome.storage.local.get('isPro');
-  if (!isPro) return alertsSent || {};
+async function notify(id, title, message) {
+  try {
+    await chrome.notifications.create(`clt_${id}_${Date.now()}`, {
+      type: 'basic', title, message, iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+    });
+  } catch (err) {
+    console.warn('Clautics: notification failed', err);
+  }
+}
 
-  if (!limits) return alertsSent || {};
-
-  const { alertWarnPct, alertCritPct } = await chrome.storage.local.get(['alertWarnPct', 'alertCritPct']);
-  const warnPct = Number(alertWarnPct) || 80;
-  const critPct = Number(alertCritPct) || 95;
-  // storageLabel is a stable, English, never-localized fragment of the
-  // alertsSent storage key (and matches the hardcoded 'Warning'/'Critical'
-  // in poll()'s reset logic below) — it must NOT change with the user's
-  // language, or switching languages would silently duplicate or drop
-  // already-sent alerts. `text` is the localized word actually shown in
-  // the notification.
-  const thresholds = [
-    { pct: warnPct, storageLabel: 'Warning',  text: chrome.i18n.getMessage('severityWarning') },
-    { pct: critPct, storageLabel: 'Critical', text: chrome.i18n.getMessage('severityCritical') },
-  ];
-
+async function checkAlerts(state, alertsSent) {
+  const { isPro, alertWarnPct, alertCritPct, paceAlerts } =
+    await chrome.storage.local.get(['isPro', 'alertWarnPct', 'alertCritPct', 'paceAlerts']);
+  const limits = state.limits;
   const updated = { ...(alertsSent || {}) };
+  if (!limits) return updated;
+  const now = Date.now();
 
-  const tracked = [
-    { key: 'session',      val: limits.session?.pct },
-    { key: 'weekly',       val: limits.weekly?.pct },
-    { key: 'sonnetWeekly', val: limits.sonnetWeekly?.pct },
-    { key: 'opusWeekly',   val: limits.opusWeekly?.pct },
-  ];
-
-  for (const { key, val } of tracked) {
-    if (val == null) continue;
-    const name = CLY.LABELS[key];
-    for (const { pct: threshold, storageLabel, text: severity } of thresholds) {
-      // Use fixed 'warn'/'crit' keys so they survive threshold value changes
-      const alertKey = `${key}_${storageLabel}`;
-      if (!updated[alertKey] && val >= threshold) {
-        try {
-          await chrome.notifications.create(`clt_${key}_${storageLabel}_${Date.now()}`, {
-            type:     'basic',
-            title:    chrome.i18n.getMessage('notifTitle', [name, String(threshold)]),
-            message:  chrome.i18n.getMessage('notifBody', [severity, val.toFixed(0), name]),
-            iconUrl:  chrome.runtime.getURL('icons/icon48.png'),
-          });
-        } catch (err) {
-          console.warn('Clautics: notification failed', err);
+  if (isPro) {
+    const warnPct = Number(alertWarnPct) || 80;
+    const critPct = Number(alertCritPct) || 95;
+    // storageLabel is a stable, English, never-localized fragment of the
+    // alertsSent storage key (and matches the hardcoded 'Warning'/'Critical'
+    // in poll()'s reset logic below) — it must NOT change with the user's
+    // language, or switching languages would silently duplicate or drop
+    // already-sent alerts. `text` is the localized word actually shown.
+    const thresholds = [
+      { pct: warnPct, storageLabel: 'Warning',  text: chrome.i18n.getMessage('severityWarning') },
+      { pct: critPct, storageLabel: 'Critical', text: chrome.i18n.getMessage('severityCritical') },
+    ];
+    for (const [key, lim] of Object.entries(limits)) {
+      if (key === 'extraUsage') continue;
+      const name = CLY.label(key);
+      for (const { pct: threshold, storageLabel, text: severity } of thresholds) {
+        const alertKey = `${key}_${storageLabel}`;
+        if (!updated[alertKey] && lim.pct >= threshold) {
+          await notify(`${key}_${storageLabel}`,
+            chrome.i18n.getMessage('notifTitle', [name, String(threshold)]),
+            chrome.i18n.getMessage('notifBody', [severity, lim.pct.toFixed(0), name]));
+          updated[alertKey] = true;
         }
-        updated[alertKey] = true;
       }
+    }
+  }
+
+  // Pace alerts. Keys carry the window's reset time and expire with it.
+  for (const k of Object.keys(updated)) {
+    if (k.startsWith('pace_') && typeof updated[k] === 'number' && updated[k] < now) delete updated[k];
+  }
+  if (paceAlerts !== false) {
+    const analysis = COACH.analyze(state, now);
+    for (const p of Object.values(analysis.pace)) {
+      if (!COACH.paceAlertDue(p, now)) continue;
+      const resetsAt = limits[p.key].resetsAt;
+      const alertKey = `pace_${p.key}_${Math.round(resetsAt / 600_000)}`;
+      if (updated[alertKey]) continue;
+      await notify(alertKey,
+        chrome.i18n.getMessage('paceNotifTitle', [CLY.label(p.key)]),
+        chrome.i18n.getMessage('paceNotifBody', [CLY.duration(p.runOutAt - now), CLY.duration(resetsAt - p.runOutAt)]));
+      updated[alertKey] = resetsAt;
     }
   }
   return updated;
@@ -316,94 +472,175 @@ async function checkAlerts(limits, alertsSent) {
 
 // ── Main poll cycle ────────────────────────────────────────────────────────
 
-async function poll() {
-  const state = await load();
+const TIER_REFRESH_MS = 24 * 3_600_000;
+const IDLE_POLL_MS    = 5 * 60_000;   // with no claude.ai tab open
 
-  let orgId = state.orgId || await getOrgId();
+async function poll({ force = false } = {}) {
+  const prev = await load();
+  const tabs = await claudeTabs();
+
+  // With claude.ai closed, usage still moves (Claude Code and the desktop app
+  // share the same limits), so keep tracking — just less often.
+  if (!force && !tabs.length && prev.attemptAt && Date.now() - prev.attemptAt < IDLE_POLL_MS) return;
+  await update((s) => ({ ...s, attemptAt: Date.now() }));
+
+  const orgId = await getOrgId(prev.orgId);
   if (!orgId) return;
 
-  const raw = await fetchUsage(orgId);
-  if (!raw) return;
+  const usage = await fetchJson(`/api/organizations/${orgId}/usage`);
+  if (!usage.ok) return;
 
-  let tier = state.tier;
-  if (tier === 'unknown') tier = await fetchTier(orgId);
-
-  const limits = parseLimits(raw);
-
-  const lastPercent = {};
-  for (const key of ['session', 'weekly', 'sonnetWeekly', 'opusWeekly']) {
-    lastPercent[key] = limits[key]?.pct ?? 0;
+  const orgChanged = orgId !== prev.orgId;
+  let tier = orgChanged ? 'unknown' : prev.tier;
+  let tierCheckedAt = orgChanged ? null : prev.tierCheckedAt;
+  if (tier === 'unknown' || !tierCheckedAt || Date.now() - tierCheckedAt > TIER_REFRESH_MS) {
+    const fresh = await fetchTier(orgId);
+    if (fresh) { tier = fresh; tierCheckedAt = Date.now(); }
   }
 
-  // Reset per-limit alert flags when a limit resets (big drop in pct)
-  // Keys use 'warn'/'crit' labels (not numeric values) so they're stable
-  const alertsSentUpdated = { ...(state.alertsSent || {}) };
-  for (const key of ['session', 'weekly', 'sonnetWeekly', 'opusWeekly']) {
-    const prev = state.lastPercent?.[key] ?? 0;
-    const curr = limits[key]?.pct ?? 0;
-    if (prev > 50 && curr < 10) {
-      delete alertsSentUpdated[`${key}_Warning`];
-      delete alertsSentUpdated[`${key}_Critical`];
+  const limits = parseLimits(usage.data);
+
+  const state = await update((s) => {
+    const now = Date.now();
+    const next = { ...s, limits, tier, tierCheckedAt, orgId, fetchedAt: now };
+
+    if (orgChanged && s.orgId) {
+      // Another account's history would make the coach's numbers nonsense.
+      Object.assign(next, { samples: {}, msgCosts: [], convCost: {}, pending: [], lastConv: null, alertsSent: {} });
+      return next;
     }
-  }
 
-  // Reload to avoid clobbering webRequest-written heatmap/dailyUsage
-  const freshState = await load();
+    next.samples = recordSamples(s.samples, limits, now);
+    attributeCosts(next, s, now);
 
-  const newState = {
-    ...freshState,
-    limits,
-    tier,
-    orgId,
-    lastPercent,
-    fetchedAt: Date.now(),
-    alertsSent: await checkAlerts(limits, alertsSentUpdated),
-  };
+    // Reset per-limit alert flags when a limit resets (big drop in pct).
+    const alertsSent = { ...(s.alertsSent || {}) };
+    for (const key of Object.keys(limits)) {
+      const before = s.lastPercent?.[key] ?? 0;
+      if (before > 50 && limits[key].pct < 10) {
+        delete alertsSent[`${key}_Warning`];
+        delete alertsSent[`${key}_Critical`];
+      }
+    }
+    next.alertsSent = alertsSent;
+    next.lastPercent = Object.fromEntries(Object.entries(limits).map(([k, v]) => [k, v.pct]));
+    return next;
+  });
 
-  await save(newState);
+  const alertsSent = await checkAlerts(state, state.alertsSent);
+  const final = await update((s) => ({ ...s, alertsSent }));
 
-  const tabs = await chrome.tabs.query({ url: '*://claude.ai/*' });
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'clautics_update', data: newState }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: 'clautics_update', data: final }).catch(() => {});
   }
+  syncToDesktop(final).catch(() => {});
+  return final;
+}
+
+// ── Clautics Desktop sync ──────────────────────────────────────────────────
+// The desktop menu-bar app can't see messages being sent (that happens here,
+// in the browser), so after each poll the extension hands it the message
+// counts and per-message costs it measured. The desktop app listens on
+// localhost only and accepts this extension's origin only. If it isn't
+// installed or running, the request is refused instantly; we then stay quiet
+// for a few minutes instead of retrying every poll.
+
+const DESKTOP_SYNC_URL   = 'http://127.0.0.1:47285/sync';
+const DESKTOP_RETRY_MS   = 5 * 60_000;
+
+async function syncToDesktop(state) {
+  if (!state) return;
+  try {
+    const { desktopSyncDownAt } = await chrome.storage.session.get('desktopSyncDownAt');
+    if (desktopSyncDownAt && Date.now() - desktopSyncDownAt < DESKTOP_RETRY_MS) return;
+    const res = await fetch(DESKTOP_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orgId:      state.orgId || null,
+        dailyUsage: state.dailyUsage || {},
+        heatmap:    state.heatmap || [],
+        msgCosts:   state.msgCosts || [],
+        convCost:   state.convCost || {},
+        lastConv:   state.lastConv || null,
+      }),
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) throw new Error(`desktop sync ${res.status}`);
+    if (desktopSyncDownAt) await chrome.storage.session.remove('desktopSyncDownAt');
+  } catch {
+    await chrome.storage.session.set({ desktopSyncDownAt: Date.now() }).catch(() => {});
+  }
+}
+
+// One poll at a time; extra requests while one is running share its result.
+let polling = null;
+let pollTimer = null;
+let lastPollAt = 0;
+
+function runPoll(opts) {
+  if (!polling) {
+    lastPollAt = Date.now();
+    polling = poll(opts).catch((err) => console.warn('Clautics: poll failed', err)).finally(() => { polling = null; });
+  }
+  return polling;
+}
+
+// setTimeout is unreliable for long delays in an MV3 service worker, but a
+// few seconds right after the event that woke it up is fine.
+function schedulePoll(delayMs) {
+  if (pollTimer) return;
+  pollTimer = setTimeout(() => { pollTimer = null; runPoll(); }, delayMs);
 }
 
 // ── Listeners ──────────────────────────────────────────────────────────────
 
-const POLL_DEBOUNCE_MS = 5000;
-let lastPollAt = 0;
+const COMPLETION_RE = /\/chat_conversations\/([^/]+)\/(?:retry_)?completion$/;
+const PENDING_MAX   = 50;
 
 chrome.webRequest.onCompleted.addListener(
-  async (details) => {
+  (details) => {
+    // Our own requests (from the worker, or the content-script fallback that
+    // fetches /usage) must not trigger another poll — that's a feedback loop.
+    if (details.tabId < 0 || details.initiator?.startsWith('chrome-extension://')) return;
+
     const pathname = new URL(details.url).pathname;
-    const isCompletion = pathname.endsWith('/completion');
+    const m = COMPLETION_RE.exec(pathname);
 
-    if (isCompletion) {
-      const state = await load();
-      const key   = CLY.dateKey(new Date());
-      const daily = pruneDailyUsage({ ...(state.dailyUsage || {}) }, key);
-      daily[key]  = (daily[key] || 0) + 1;
-      const heatmap = updateHeatmap(state.heatmap, 1);
-      await save({ ...state, dailyUsage: daily, heatmap });
-    }
-
-    // Call poll directly — setTimeout is unreliable in MV3 service workers.
-    // Debounced so a burst of completions/usage calls during heavy chat
-    // activity can't hammer claude.ai's usage endpoint.
-    if (isCompletion || pathname.includes('/usage')) {
+    if (m && details.statusCode < 400) {
+      const conv = m[1];
       const now = Date.now();
-      if (now - lastPollAt >= POLL_DEBOUNCE_MS) {
-        lastPollAt = now;
-        poll().catch(console.warn);
-      }
+      update((s) => {
+        const key   = CLY.dateKey(new Date(now));
+        const daily = pruneDailyUsage({ ...(s.dailyUsage || {}) }, key);
+        daily[key]  = (daily[key] || 0) + 1;
+        const convs = { ...(s.convCost || {}) };
+        const c = convs[conv] || { n: 0, pct: 0, measured: 0, last: now };
+        convs[conv] = { ...c, n: c.n + 1, last: now };
+        return {
+          ...s,
+          dailyUsage: daily,
+          heatmap: updateHeatmap(s.heatmap, 1),
+          pending: [...(s.pending || []), { t: now, conv }].slice(-PENDING_MAX),
+          convCost: pruneConvs(convs),
+          lastConv: { id: conv, t: now },
+        };
+      }).catch(console.warn);
+      // Give claude.ai a moment to update its usage numbers, then read them.
+      schedulePoll(3000);
+      return;
     }
+
+    // claude.ai itself refreshing usage (e.g. its settings page) — piggyback,
+    // but never more than every 15s.
+    if (pathname.endsWith('/usage') && !polling && Date.now() - lastPollAt > 15_000) schedulePoll(0);
   },
   { urls: ['*://claude.ai/api/organizations/*'] }
 );
 
 chrome.alarms.create('clautics_poll', { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'clautics_poll') poll();
+  if (alarm.name === 'clautics_poll') runPoll();
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
@@ -417,7 +654,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     return true;
   }
   if (msg.type === 'clautics_poll') {
-    poll().then(() => load()).then(reply);
+    runPoll({ force: true }).then(() => load()).then(reply);
     return true;
   }
   if (msg.type === 'clautics_activate') {
@@ -477,8 +714,8 @@ async function reinjectContentScripts() {
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   validateLicense();
-  poll();
+  runPoll({ force: true });
   if (reason === 'update') reinjectContentScripts();
 });
 
-chrome.runtime.onStartup.addListener(() => { validateLicense(); poll(); });
+chrome.runtime.onStartup.addListener(() => { validateLicense(); runPoll({ force: true }); });

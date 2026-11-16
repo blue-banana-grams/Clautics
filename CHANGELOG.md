@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0] - 2026-11-16
+
+- Added a usage coach that helps you make your Claude limits last: a headline at the top of the popup and panel saying whether you're on pace, about to run out, or leaving usage unused before it resets
+- Added even-pace markers on every usage bar, showing where usage would be if you spread it evenly across the window
+- Added a budget row: roughly how many messages you have left (measured from what your recent messages actually cost), how much of the weekly limit to use per day, and how much you used today
+- Added three situation-specific tips (start a fresh chat when one gets expensive, switch to a lighter model when burning fast, use leftover usage before it resets, and more) plus a short strategy for your plan
+- Added pace alerts: a notification when you're on track to hit a limit within the hour, once per window, free for everyone, with an on/off switch in Settings
+- Added support for the Ultra plan and for per-model weekly limits such as Fable, labelled in all 8 languages
+- Added sync with the Clautics Desktop app: when it's running, the extension sends it your message counts and per-message costs so the desktop coach can show messages left too (Chrome will ask you to approve the new permission to talk to the app on your computer)
+- Fixed Clautics continuing to read the first account after you switched Claude accounts
+- Fixed the extension's own usage check triggering another check in a loop
+- Fixed the plan being detected once and never re-checked
+- Fixed a session that hasn't started showing "resetting…"
+- Fixed extra usage with no monthly cap showing a meaningless 0% bar; it now shows the amount spent
+- Fixed messages sent with "retry" not being counted
+
 ## [1.1.6] - 2026-09-10
 
 ### Added — 8-language support
